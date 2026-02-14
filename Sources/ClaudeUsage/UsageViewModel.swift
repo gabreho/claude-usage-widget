@@ -11,6 +11,11 @@ final class UsageViewModel: ObservableObject {
     private var refreshTimer: Timer?
     private let refreshInterval: TimeInterval = 300
 
+    init() {
+        NSApplication.shared.setActivationPolicy(.accessory)
+        startAutoRefresh()
+    }
+
     var primaryUtilization: Double {
         guard let usage else { return 0 }
         return max(usage.fiveHour.utilization, usage.sevenDay.utilization)

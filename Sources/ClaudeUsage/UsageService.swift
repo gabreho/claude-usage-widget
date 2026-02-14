@@ -5,7 +5,7 @@ enum UsageServiceError: LocalizedError {
     case keychainNotFound
     case tokenMissing
     case networkError(Error)
-    case httpError(statusCode: Int)
+    case httpError(statusCode: Int, message: String?)
     case decodingError(Error)
 
     var errorDescription: String? {
@@ -16,11 +16,15 @@ enum UsageServiceError: LocalizedError {
             return "OAuth access token missing from credentials"
         case .networkError(let e):
             return "Network error: \(e.localizedDescription)"
-        case .httpError(let code):
-            if code == 401 {
-                return "Token expired — open Claude Code to refresh"
+        case .httpError(let code, let message):
+            switch code {
+            case 401:
+                return "Token expired — run `claude auth login` to refresh"
+            case 403:
+                return message ?? "Access denied (HTTP 403)"
+            default:
+                return message ?? "API returned HTTP \(code)"
             }
-            return "API returned HTTP \(code)"
         case .decodingError(let e):
             return "Failed to decode response: \(e.localizedDescription)"
         }
@@ -55,6 +59,15 @@ struct UsageService {
         return token
     }
 
+    private static func parseErrorMessage(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = json["error"] as? [String: Any],
+              let message = error["message"] as? String else {
+            return nil
+        }
+        return message
+    }
+
     static func fetchUsage() async throws -> UsageResponse {
         let token = try readAccessToken()
 
@@ -79,7 +92,8 @@ struct UsageService {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            throw UsageServiceError.httpError(statusCode: httpResponse.statusCode)
+            let message = Self.parseErrorMessage(from: data)
+            throw UsageServiceError.httpError(statusCode: httpResponse.statusCode, message: message)
         }
 
         do {
