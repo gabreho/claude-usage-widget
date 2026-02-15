@@ -18,13 +18,13 @@ Small macOS menu bar app that shows your Claude usage limits in near real time.
 
 ## Current Status (Feb 15, 2026)
 
-- Build status: `swift build` passes.
+- Build status: `xcodebuild -project ClaudeUsage.xcodeproj -scheme ClaudeUsage -configuration Debug -derivedDataPath .build/DerivedData build` passes.
 - Issue tracker (`bd status`) snapshot:
   - Total issues: `18`
-  - Open: `17`
-  - Closed: `1`
-  - Ready to work: `8`
-- Latest completed item: color-coded status bar text (`claude-usage-am2`).
+  - Open: `16`
+  - Closed: `2`
+  - Ready to work: `9`
+- Latest completed item: Xcode app bundle migration (`claude-usage-rff`).
 - Highest-priority open work:
   - `claude-usage-0hd`: OAuth token auto-refresh
   - `claude-usage-1bx`: In-app OAuth login via `WKWebView`
@@ -32,8 +32,8 @@ Small macOS menu bar app that shows your Claude usage limits in near real time.
 
 ## Requirements
 
-- macOS `13+`
-- Xcode/Swift toolchain compatible with Swift `5.9`
+- macOS `14+`
+- Xcode with Swift toolchain support
 - Claude CLI authenticated on this machine
 
 ## Quick Start
@@ -42,14 +42,19 @@ Small macOS menu bar app that shows your Claude usage limits in near real time.
 # 1) Authenticate Claude CLI (if not already authenticated)
 claude auth login
 
-# 2) Build
-swift build
-
-# 3) Run
-swift run ClaudeUsage
+# 2) Open the app project
+open ClaudeUsage.xcodeproj
 ```
 
-After launch, the app appears in the menu bar as a gauge icon plus percentage.
+Then in Xcode:
+
+1. Select the `ClaudeUsage` scheme
+2. Choose `My Mac` destination
+3. Press Run
+
+If Xcode asks for signing settings, open target settings and pick your development team under `Signing & Capabilities` (automatic signing is enabled).
+
+After launch, it appears in the menu bar as a gauge icon plus percentage.
 
 ## Authentication and Data Source
 
@@ -64,7 +69,8 @@ On `401`, the app surfaces a refresh hint (`claude auth login`).
 
 ## Project Structure
 
-- `Package.swift`: SwiftPM executable target (`ClaudeUsage`, macOS 13+)
+- `ClaudeUsage.xcodeproj`: native macOS app project
+- `ClaudeUsage/Info.plist`: app metadata (`LSUIElement=YES`)
 - `Sources/ClaudeUsage/ClaudeUsageApp.swift`: app entry + menu bar scene
 - `Sources/ClaudeUsage/UsageViewModel.swift`: state, refresh loop, menu bar label/icon
 - `Sources/ClaudeUsage/UsageService.swift`: keychain read + API client + error mapping
@@ -76,7 +82,6 @@ On `401`, the app surfaces a refresh hint (`claude auth login`).
 - No automated tests yet.
 - No in-app OAuth flow yet (depends on roadmap items above).
 - No threshold notifications yet.
-- SPM executable today; Xcode app bundle migration is still open (`claude-usage-rff`).
 
 ## Issue Tracking Workflow
 
