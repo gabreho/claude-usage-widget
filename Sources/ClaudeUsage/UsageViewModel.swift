@@ -43,6 +43,9 @@ final class UsageViewModel: ObservableObject {
 
     var primaryUtilization: Double {
         guard let usage else { return 0 }
+        guard hasFutureResetDate(for: usage.fiveHour) else {
+            return usage.sevenDay.utilization
+        }
         return max(usage.fiveHour.utilization, usage.sevenDay.utilization)
     }
 
@@ -59,9 +62,14 @@ final class UsageViewModel: ObservableObject {
 
         switch menuBarLabelMode {
         case .both:
-            let fiveHourPercent = Int(usage.fiveHour.utilization)
+            let fiveHourLabelValue: String
+            if hasFutureResetDate(for: usage.fiveHour) {
+                fiveHourLabelValue = "\(Int(usage.fiveHour.utilization))%"
+            } else {
+                fiveHourLabelValue = "--"
+            }
             let sevenDayPercent = Int(usage.sevenDay.utilization)
-            return "5h:\(fiveHourPercent)% 7d:\(sevenDayPercent)%"
+            return "5h:\(fiveHourLabelValue) 7d:\(sevenDayPercent)%"
         case .highest:
             return "\(Int(primaryUtilization))%"
         }
@@ -170,5 +178,12 @@ final class UsageViewModel: ObservableObject {
     func handleInAppOAuthFailure(_ message: String) {
         error = message
         cancelInAppOAuthLogin()
+    }
+
+    private func hasFutureResetDate(for limit: UsageLimit) -> Bool {
+        guard let resetDate = limit.resetDate else {
+            return false
+        }
+        return resetDate > Date()
     }
 }
