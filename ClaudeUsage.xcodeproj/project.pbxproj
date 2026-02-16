@@ -7,18 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1B2C3D4E5F6078900000020 /* ClaudeUsageApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000010 /* ClaudeUsageApp.swift */; };
-		A1B2C3D4E5F6078900000023 /* UsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000013 /* UsageViewModel.swift */; };
-		A1B2C3D4E5F6078900000024 /* UsagePopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000014 /* UsagePopoverView.swift */; };
-		A1B2C3D4E5F6078900000025 /* OAuthLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000017 /* OAuthLoginSheet.swift */; };
-		A1B2C3D4E5F6078900000030 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
-		B1C2D3E4F50678900000001B /* ClaudeUsageiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000003 /* ClaudeUsageiOSApp.swift */; };
-		B1C2D3E4F50678900000001C /* ClaudeUsageiOSHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000004 /* ClaudeUsageiOSHomeView.swift */; };
-		B1C2D3E4F50678900000001E /* ClaudeUsageWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */; };
-		B1C2D3E4F506789000000020 /* ClaudeUsageWidgetExtension.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000002 /* ClaudeUsageWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		B1C2D3E4F506789000000026 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
-		B1C2D3E4F506789000000027 /* OAuthLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000028 /* OAuthLoginSheet.swift */; };
-		B1C2D3E4F506789000000029 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
+			A1B2C3D4E5F6078900000020 /* ClaudeUsageApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000010 /* ClaudeUsageApp.swift */; };
+			A1B2C3D4E5F6078900000023 /* UsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000013 /* UsageViewModel.swift */; };
+			A1B2C3D4E5F6078900000024 /* UsagePopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6078900000014 /* UsagePopoverView.swift */; };
+			A1B2C3D4E5F6078900000030 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
+			B1C2D3E4F50678900000001B /* ClaudeUsageiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000003 /* ClaudeUsageiOSApp.swift */; };
+			B1C2D3E4F50678900000001C /* ClaudeUsageiOSHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000004 /* ClaudeUsageiOSHomeView.swift */; };
+			B1C2D3E4F50678900000001E /* ClaudeUsageWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */; };
+			B1C2D3E4F506789000000020 /* ClaudeUsageWidgetExtension.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000002 /* ClaudeUsageWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+			B1C2D3E4F506789000000026 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
+			B1C2D3E4F506789000000029 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
+			C3D4E5F60789012345000002 /* OAuthLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60789012345000001 /* OAuthLoginView.swift */; };
+			C3D4E5F60789012345000003 /* OAuthLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60789012345000001 /* OAuthLoginView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,18 +47,17 @@
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F6078900000005 /* ClaudeUsage.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeUsage.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F6078900000010 /* ClaudeUsageApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageApp.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6078900000013 /* UsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModel.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6078900000014 /* UsagePopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsagePopoverView.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6078900000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A1B2C3D4E5F6078900000017 /* OAuthLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginSheet.swift; sourceTree = "<group>"; };
-		B1C2D3E4F506789000000001 /* ClaudeUsageiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeUsageiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B1C2D3E4F506789000000002 /* ClaudeUsageWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClaudeUsageWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		B1C2D3E4F506789000000003 /* ClaudeUsageiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageiOSApp.swift; sourceTree = "<group>"; };
-		B1C2D3E4F506789000000004 /* ClaudeUsageiOSHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageiOSHomeView.swift; sourceTree = "<group>"; };
-		B1C2D3E4F506789000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageWidget.swift; sourceTree = "<group>"; };
-		B1C2D3E4F506789000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B1C2D3E4F506789000000028 /* OAuthLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginSheet.swift; sourceTree = "<group>"; };
+			A1B2C3D4E5F6078900000013 /* UsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModel.swift; sourceTree = "<group>"; };
+			A1B2C3D4E5F6078900000014 /* UsagePopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsagePopoverView.swift; sourceTree = "<group>"; };
+			A1B2C3D4E5F6078900000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+			B1C2D3E4F506789000000001 /* ClaudeUsageiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClaudeUsageiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+			B1C2D3E4F506789000000002 /* ClaudeUsageWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClaudeUsageWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+			B1C2D3E4F506789000000003 /* ClaudeUsageiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageiOSApp.swift; sourceTree = "<group>"; };
+			B1C2D3E4F506789000000004 /* ClaudeUsageiOSHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageiOSHomeView.swift; sourceTree = "<group>"; };
+			B1C2D3E4F506789000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+			B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageWidget.swift; sourceTree = "<group>"; };
+			B1C2D3E4F506789000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+			C3D4E5F60789012345000001 /* OAuthLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,12 +90,13 @@
 /* Begin PBXGroup section */
 		A1B2C3D4E5F6078900000002 = {
 			isa = PBXGroup;
-			children = (
-				A1B2C3D4E5F6078900000004 /* Sources */,
-				B1C2D3E4F506789000000008 /* Sources iOS */,
-				B1C2D3E4F506789000000009 /* Sources Widget */,
-				A1B2C3D4E5F6078900000016 /* ClaudeUsage */,
-				B1C2D3E4F50678900000000A /* ClaudeUsageiOS */,
+				children = (
+					A1B2C3D4E5F6078900000004 /* Sources */,
+					B1C2D3E4F506789000000008 /* Sources iOS */,
+					C3D4E5F60789012345000004 /* Sources Shared */,
+					B1C2D3E4F506789000000009 /* Sources Widget */,
+					A1B2C3D4E5F6078900000016 /* ClaudeUsage */,
+					B1C2D3E4F50678900000000A /* ClaudeUsageiOS */,
 				B1C2D3E4F50678900000000B /* ClaudeUsageWidget */,
 				A1B2C3D4E5F6078900000003 /* Products */,
 			);
@@ -114,14 +114,13 @@
 		};
 		A1B2C3D4E5F6078900000004 /* Sources */ = {
 			isa = PBXGroup;
-			children = (
-				A1B2C3D4E5F6078900000010 /* ClaudeUsageApp.swift */,
-				A1B2C3D4E5F6078900000013 /* UsageViewModel.swift */,
-				A1B2C3D4E5F6078900000014 /* UsagePopoverView.swift */,
-				A1B2C3D4E5F6078900000017 /* OAuthLoginSheet.swift */,
-			);
-			name = Sources;
-			path = Sources/ClaudeUsage;
+				children = (
+					A1B2C3D4E5F6078900000010 /* ClaudeUsageApp.swift */,
+					A1B2C3D4E5F6078900000013 /* UsageViewModel.swift */,
+					A1B2C3D4E5F6078900000014 /* UsagePopoverView.swift */,
+				);
+				name = Sources;
+				path = Sources/ClaudeUsage;
 			sourceTree = "<group>";
 		};
 		A1B2C3D4E5F6078900000016 /* ClaudeUsage */ = {
@@ -134,18 +133,26 @@
 		};
 		B1C2D3E4F506789000000008 /* Sources iOS */ = {
 			isa = PBXGroup;
-			children = (
-				B1C2D3E4F506789000000003 /* ClaudeUsageiOSApp.swift */,
-				B1C2D3E4F506789000000004 /* ClaudeUsageiOSHomeView.swift */,
-				B1C2D3E4F506789000000028 /* OAuthLoginSheet.swift */,
-			);
-			name = "Sources iOS";
-			path = Sources/ClaudeUsageiOS;
-			sourceTree = "<group>";
-		};
-		B1C2D3E4F506789000000009 /* Sources Widget */ = {
-			isa = PBXGroup;
-			children = (
+				children = (
+					B1C2D3E4F506789000000003 /* ClaudeUsageiOSApp.swift */,
+					B1C2D3E4F506789000000004 /* ClaudeUsageiOSHomeView.swift */,
+				);
+				name = "Sources iOS";
+				path = Sources/ClaudeUsageiOS;
+				sourceTree = "<group>";
+			};
+			C3D4E5F60789012345000004 /* Sources Shared */ = {
+				isa = PBXGroup;
+				children = (
+					C3D4E5F60789012345000001 /* OAuthLoginView.swift */,
+				);
+				name = "Sources Shared";
+				path = Sources/Shared;
+				sourceTree = "<group>";
+			};
+			B1C2D3E4F506789000000009 /* Sources Widget */ = {
+				isa = PBXGroup;
+				children = (
 				B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */,
 			);
 			name = "Sources Widget";
@@ -305,22 +312,22 @@
 		A1B2C3D4E5F607890000000D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D4E5F6078900000020 /* ClaudeUsageApp.swift in Sources */,
-				A1B2C3D4E5F6078900000023 /* UsageViewModel.swift in Sources */,
-				A1B2C3D4E5F6078900000024 /* UsagePopoverView.swift in Sources */,
-				A1B2C3D4E5F6078900000025 /* OAuthLoginSheet.swift in Sources */,
-			);
+				files = (
+					A1B2C3D4E5F6078900000020 /* ClaudeUsageApp.swift in Sources */,
+					A1B2C3D4E5F6078900000023 /* UsageViewModel.swift in Sources */,
+					A1B2C3D4E5F6078900000024 /* UsagePopoverView.swift in Sources */,
+					C3D4E5F60789012345000002 /* OAuthLoginView.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B1C2D3E4F50678900000000C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				B1C2D3E4F50678900000001B /* ClaudeUsageiOSApp.swift in Sources */,
-				B1C2D3E4F50678900000001C /* ClaudeUsageiOSHomeView.swift in Sources */,
-				B1C2D3E4F506789000000027 /* OAuthLoginSheet.swift in Sources */,
-			);
+				files = (
+					B1C2D3E4F50678900000001B /* ClaudeUsageiOSApp.swift in Sources */,
+					B1C2D3E4F50678900000001C /* ClaudeUsageiOSHomeView.swift in Sources */,
+					C3D4E5F60789012345000003 /* OAuthLoginView.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B1C2D3E4F506789000000010 /* Sources */ = {

@@ -32,7 +32,7 @@ struct ClaudeUsageiOSHomeView: View {
         }
         .fullScreenCover(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {
-                OAuthLoginSheet(
+                OAuthLoginView(
                     authorizationURL: authorizationURL,
                     isCompletingLogin: viewModel.isCompletingOAuthLogin,
                     onCancel: { viewModel.cancelInAppOAuthLogin() },

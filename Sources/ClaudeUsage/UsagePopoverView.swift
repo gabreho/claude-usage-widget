@@ -32,7 +32,7 @@ struct UsagePopoverView: View {
         .frame(width: 280)
         .sheet(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {
-                OAuthLoginSheet(
+                OAuthLoginView(
                     authorizationURL: authorizationURL,
                     isCompletingLogin: viewModel.isCompletingOAuthLogin,
                     onCancel: { viewModel.cancelInAppOAuthLogin() },

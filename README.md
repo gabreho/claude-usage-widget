@@ -87,7 +87,7 @@ OAuth login bootstrap flow:
 - `Sources/ClaudeUsage/ClaudeUsageApp.swift`: app entry + menu bar scene
 - `Sources/ClaudeUsage/UsageViewModel.swift`: state, refresh loop, menu bar label/icon
 - `Sources/ClaudeUsage/UsagePopoverView.swift`: popover UI and progress rows
-- `Sources/ClaudeUsage/OAuthLoginSheet.swift`: in-app OAuth login sheet + `WKWebView` callback capture
+- `Sources/Shared/OAuthLoginView.swift`: shared in-app OAuth login view + `WKWebView` callback capture
 - `Sources/ClaudeUsageiOS/`: iOS host app scaffold
 - `Sources/ClaudeUsageWidget/`: iOS widget extension scaffold
 - `ClaudeUsageiOS/Info.plist`: iOS host app metadata

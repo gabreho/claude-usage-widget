@@ -2,7 +2,7 @@ import ClaudeUsageKit
 import SwiftUI
 import WebKit
 
-struct OAuthLoginSheet: View {
+struct OAuthLoginView: View {
     let authorizationURL: URL
     let isCompletingLogin: Bool
     let onCancel: () -> Void
@@ -10,6 +10,32 @@ struct OAuthLoginSheet: View {
     let onFailure: (_ message: String) -> Void
 
     var body: some View {
+#if os(macOS)
+        VStack(spacing: 0) {
+            HStack {
+                Text("Sign in to Claude")
+                    .font(.headline)
+                Spacer()
+                if isCompletingLogin {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.borderless)
+            }
+            .padding()
+
+            Divider()
+
+            OAuthWebView(
+                initialURL: authorizationURL,
+                callbackURL: UsageService.oauthRedirectURL,
+                onCodeReceived: onCodeReceived,
+                onFailure: onFailure
+            )
+        }
+        .frame(minWidth: 760, minHeight: 560)
+#elseif os(iOS)
         NavigationStack {
             OAuthWebView(
                 initialURL: authorizationURL,
@@ -31,10 +57,11 @@ struct OAuthLoginSheet: View {
                 }
             }
         }
+#endif
     }
 }
 
-private struct OAuthWebView: UIViewRepresentable {
+private struct OAuthWebView {
     let initialURL: URL
     let callbackURL: URL
     let onCodeReceived: (_ code: String, _ state: String?) -> Void
@@ -48,7 +75,13 @@ private struct OAuthWebView: UIViewRepresentable {
         )
     }
 
-    func makeUIView(context: Context) -> WKWebView {
+    private func initialRequest() -> URLRequest {
+        var request = URLRequest(url: initialURL)
+        request.timeoutInterval = 30
+        return request
+    }
+
+    fileprivate func makeWebView(with coordinator: Coordinator) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
 
@@ -57,27 +90,22 @@ private struct OAuthWebView: UIViewRepresentable {
         configuration.preferences = preferences
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.navigationDelegate = context.coordinator
-        webView.uiDelegate = context.coordinator
-
-        var request = URLRequest(url: initialURL)
-        request.timeoutInterval = 30
-        webView.load(request)
+        webView.navigationDelegate = coordinator
+        webView.uiDelegate = coordinator
+        webView.load(initialRequest())
 
         return webView
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.updateHandlers(
+    fileprivate func updateWebView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.updateHandlers(
             callbackURL: callbackURL,
             onCodeReceived: onCodeReceived,
             onFailure: onFailure
         )
 
         if webView.url == nil {
-            var request = URLRequest(url: initialURL)
-            request.timeoutInterval = 30
-            webView.load(request)
+            webView.load(initialRequest())
         }
     }
 
@@ -245,3 +273,25 @@ private struct OAuthWebView: UIViewRepresentable {
         }
     }
 }
+
+#if os(macOS)
+extension OAuthWebView: NSViewRepresentable {
+    func makeNSView(context: Context) -> WKWebView {
+        makeWebView(with: context.coordinator)
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        updateWebView(webView, coordinator: context.coordinator)
+    }
+}
+#elseif os(iOS)
+extension OAuthWebView: UIViewRepresentable {
+    func makeUIView(context: Context) -> WKWebView {
+        makeWebView(with: context.coordinator)
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        updateWebView(webView, coordinator: context.coordinator)
+    }
+}
+#endif
