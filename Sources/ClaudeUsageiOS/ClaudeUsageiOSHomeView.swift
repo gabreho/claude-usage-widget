@@ -160,6 +160,10 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
     private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
 
     init() {
+        // Avoid network/keychain side effects during SwiftUI canvas previews.
+        guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else {
+            return
+        }
         startAutoRefreshIfNeeded()
     }
 
