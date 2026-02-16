@@ -80,18 +80,7 @@ struct ClaudeUsageiOSHomeView: View {
     @ViewBuilder
     private var usageSection: some View {
         if let usage = viewModel.usage {
-            VStack(spacing: 12) {
-                UsageLimitCard(title: "Session (5-hour)", limit: usage.fiveHour)
-                UsageLimitCard(title: "Weekly (7-day)", limit: usage.sevenDay)
-
-                if let opus = usage.sevenDayOpus, opus.utilization > 0 {
-                    UsageLimitCard(title: "Opus (7-day)", limit: opus)
-                }
-
-                if let sonnet = usage.sevenDaySonnet, sonnet.utilization > 0 {
-                    UsageLimitCard(title: "Sonnet (7-day)", limit: sonnet)
-                }
-            }
+            UsageMetricsView(usage: usage, style: .card)
         }
     }
 
@@ -103,43 +92,6 @@ struct ClaudeUsageiOSHomeView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-}
-
-private struct UsageLimitCard: View {
-    let title: String
-    let limit: UsageLimit
-
-    private var tintColor: Color {
-        switch limit.tier {
-        case .green: return .green
-        case .yellow: return .yellow
-        case .red: return .red
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                Text("\(Int(limit.utilization))%")
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(tintColor)
-            }
-
-            ProgressView(value: limit.utilization, total: 100)
-                .tint(tintColor)
-
-            if let resetDate = limit.resetDate, resetDate > Date() {
-                Text("Resets \(resetDate, style: .relative)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

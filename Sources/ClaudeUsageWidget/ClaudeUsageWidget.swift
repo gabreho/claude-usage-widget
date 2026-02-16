@@ -73,8 +73,7 @@ private struct ClaudeUsageWidgetEntryView: View {
             headerText
 
             if let usage {
-                CompactMetricRow(label: "Session", limit: usage.fiveHour)
-                CompactMetricRow(label: "Weekly", limit: usage.sevenDay)
+                UsageMetricsView(usage: usage, style: .widgetCompact)
             } else {
                 unavailableText
             }
@@ -89,8 +88,7 @@ private struct ClaudeUsageWidgetEntryView: View {
             headerText
 
             if let usage {
-                UsageProgressRow(label: "Session (5-hour)", limit: usage.fiveHour)
-                UsageProgressRow(label: "Weekly (7-day)", limit: usage.sevenDay)
+                UsageMetricsView(usage: usage, style: .widgetProgress)
 
                 if let fetchedAt = entry.snapshot?.fetchedAt {
                     Text("Updated \(fetchedAt, style: .relative) ago")
@@ -116,65 +114,6 @@ private struct ClaudeUsageWidgetEntryView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.leading)
-    }
-}
-
-private struct CompactMetricRow: View {
-    let label: String
-    let limit: UsageLimit
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.subheadline.weight(.medium))
-            Spacer()
-            Text("\(Int(limit.utilization.rounded()))%")
-                .font(.subheadline.monospacedDigit().weight(.semibold))
-                .foregroundStyle(tintColor)
-        }
-    }
-
-    private var tintColor: Color {
-        switch limit.tier {
-        case .green: return .green
-        case .yellow: return .yellow
-        case .red: return .red
-        }
-    }
-}
-
-private struct UsageProgressRow: View {
-    let label: String
-    let limit: UsageLimit
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(label)
-                    .font(.subheadline.weight(.medium))
-                Spacer()
-                Text("\(Int(limit.utilization.rounded()))%")
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(tintColor)
-            }
-
-            ProgressView(value: limit.utilization, total: 100)
-                .tint(tintColor)
-
-            if let resetDate = limit.resetDate, resetDate > Date() {
-                Text("Resets \(resetDate, style: .relative)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var tintColor: Color {
-        switch limit.tier {
-        case .green: return .green
-        case .yellow: return .yellow
-        case .red: return .red
-        }
     }
 }
 

@@ -36,16 +36,7 @@ struct UsagePopoverView: View {
             }
 
             if let usage = viewModel.usage {
-                UsageLimitRow(label: "Session (5-hour)", limit: usage.fiveHour)
-                UsageLimitRow(label: "Weekly (7-day)", limit: usage.sevenDay)
-
-                if let opus = usage.sevenDayOpus, opus.utilization > 0 {
-                    UsageLimitRow(label: "Opus (7-day)", limit: opus)
-                }
-
-                if let sonnet = usage.sevenDaySonnet, sonnet.utilization > 0 {
-                    UsageLimitRow(label: "Sonnet (7-day)", limit: sonnet)
-                }
+                UsageMetricsView(usage: usage, style: .popover)
             } else if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
@@ -88,41 +79,6 @@ struct UsagePopoverView: View {
                         viewModel.handleInAppOAuthFailure(message)
                     }
                 )
-            }
-        }
-    }
-}
-
-struct UsageLimitRow: View {
-    let label: String
-    let limit: UsageLimit
-
-    private var color: Color {
-        switch limit.tier {
-        case .green: return .green
-        case .yellow: return .yellow
-        case .red: return .red
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label)
-                    .font(.subheadline.weight(.medium))
-                Spacer()
-                Text("\(Int(limit.utilization))%")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundColor(color)
-            }
-
-            ProgressView(value: limit.utilization, total: 100)
-                .tint(color)
-
-            if let resetDate = limit.resetDate, resetDate > Date() {
-                Text("Resets \(resetDate, style: .relative)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
             }
         }
     }
