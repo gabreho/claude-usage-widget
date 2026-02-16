@@ -67,6 +67,11 @@ After launch, it appears in the menu bar as a gauge icon plus percentage.
 
 On `401`, the app surfaces a refresh hint (`claude auth login`).
 
+## iOS Token Bootstrap Strategy
+
+- Decision: use full in-app OAuth (webview-based) bootstrap on iOS.
+- Rationale and alternatives: `docs/ios-token-strategy.md`.
+
 ## Project Structure
 
 - `ClaudeUsage.xcodeproj`: native macOS app project
@@ -77,6 +82,11 @@ On `401`, the app surfaces a refresh hint (`claude auth login`).
 - `Sources/ClaudeUsage/ClaudeUsageApp.swift`: app entry + menu bar scene
 - `Sources/ClaudeUsage/UsageViewModel.swift`: state, refresh loop, menu bar label/icon
 - `Sources/ClaudeUsage/UsagePopoverView.swift`: popover UI and progress rows
+- `Sources/ClaudeUsageiOS/`: iOS host app scaffold
+- `Sources/ClaudeUsageWidget/`: iOS widget extension scaffold
+- `ClaudeUsageiOS/Info.plist`: iOS host app metadata
+- `ClaudeUsageWidget/Info.plist`: widget extension metadata
+- `docs/ios-token-strategy.md`: iOS OAuth bootstrap decision record
 
 ## Known Gaps
 
