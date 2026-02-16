@@ -17,6 +17,7 @@
 		B1C2D3E4F506789000000027 /* OAuthLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000028 /* OAuthLoginSheet.swift */; };
 		B1C2D3E4F506789000000026 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
 		B1C2D3E4F50678900000001E /* ClaudeUsageWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */; };
+		B1C2D3E4F506789000000029 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
 		B1C2D3E4F506789000000020 /* ClaudeUsageWidgetExtension.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F506789000000002 /* ClaudeUsageWidgetExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -81,6 +82,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1C2D3E4F506789000000029 /* ClaudeUsageKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -224,6 +226,9 @@
 			dependencies = (
 			);
 			name = ClaudeUsageWidgetExtension;
+			packageProductDependencies = (
+				A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */,
+			);
 			productName = ClaudeUsageWidgetExtension;
 			productReference = B1C2D3E4F506789000000002 /* ClaudeUsageWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -406,6 +411,7 @@
 		B1C2D3E4F506789000000017 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ClaudeUsageiOS/ClaudeUsageiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -431,6 +437,7 @@
 		B1C2D3E4F506789000000018 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ClaudeUsageiOS/ClaudeUsageiOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -457,6 +464,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ClaudeUsageWidget/ClaudeUsageWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
@@ -484,6 +492,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ClaudeUsageWidget/ClaudeUsageWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";

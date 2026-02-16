@@ -1,5 +1,6 @@
 import ClaudeUsageKit
 import SwiftUI
+import WidgetKit
 
 struct ClaudeUsageiOSHomeView: View {
     @StateObject private var viewModel = ClaudeUsageiOSViewModel()
@@ -174,8 +175,11 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
         Task {
             do {
                 let result = try await UsageService.fetchUsage()
+                let refreshedAt = Date()
                 self.usage = result
-                self.lastUpdated = Date()
+                self.lastUpdated = refreshedAt
+                UsageWidgetSharedStore.save(usage: result, fetchedAt: refreshedAt)
+                WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
                 self.error = nil
                 self.lastServiceError = nil
             } catch {
