@@ -4,6 +4,13 @@ import ClaudeUsageKit
 
 @MainActor
 final class UsageViewModel: ObservableObject {
+    enum MenuBarLabelMode: String {
+        case both
+        case highest
+    }
+
+    private static let menuBarLabelModeDefaultsKey = "menuBarLabelMode"
+
     @Published var usage: UsageResponse?
     @Published var error: String?
     @Published var isLoading = false
@@ -11,6 +18,14 @@ final class UsageViewModel: ObservableObject {
     @Published var lastUpdated: Date?
     @Published var oauthAuthorizationURL: URL?
     @Published var isShowingOAuthLogin = false
+    @Published var menuBarLabelMode: MenuBarLabelMode {
+        didSet {
+            UserDefaults.standard.set(
+                menuBarLabelMode.rawValue,
+                forKey: Self.menuBarLabelModeDefaultsKey
+            )
+        }
+    }
 
     private var refreshTimer: Timer?
     private let refreshInterval: TimeInterval = 300
@@ -18,6 +33,10 @@ final class UsageViewModel: ObservableObject {
     private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
 
     init() {
+        let storedModeRawValue = UserDefaults.standard.string(
+            forKey: Self.menuBarLabelModeDefaultsKey
+        )
+        self.menuBarLabelMode = MenuBarLabelMode(rawValue: storedModeRawValue ?? "") ?? .both
         NSApplication.shared.setActivationPolicy(.accessory)
         startAutoRefresh()
     }
@@ -36,8 +55,16 @@ final class UsageViewModel: ObservableObject {
     }
 
     var menuBarLabel: String {
-        guard usage != nil else { return "—" }
-        return "\(Int(primaryUtilization))%"
+        guard let usage else { return "—" }
+
+        switch menuBarLabelMode {
+        case .both:
+            let fiveHourPercent = Int(usage.fiveHour.utilization)
+            let sevenDayPercent = Int(usage.sevenDay.utilization)
+            return "5h:\(fiveHourPercent)% 7d:\(sevenDayPercent)%"
+        case .highest:
+            return "\(Int(primaryUtilization))%"
+        }
     }
 
     var menuBarIcon: String {
