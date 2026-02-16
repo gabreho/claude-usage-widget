@@ -68,6 +68,8 @@ public enum UsageServiceError: LocalizedError {
 public struct UsageService {
     private static let apiURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
     private static let oauthAuthorizeURL = URL(string: "https://claude.ai/oauth/authorize")!
+    // TODO: (claude-usage-4vj) Reuses Claude Code's client ID and full scope set.
+    // See OAuthTokenClient for details — scopes should be narrowed to usage-only.
     private static let oauthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
     private static let oauthAuthorizeScopes = [
         "org:create_api_key",
