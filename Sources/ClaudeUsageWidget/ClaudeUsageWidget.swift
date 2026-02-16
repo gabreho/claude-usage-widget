@@ -48,14 +48,16 @@ private struct ClaudeUsageWidgetEntryView: View {
     }
 
     var body: some View {
-        Group {
-            switch family {
-            case .systemMedium:
-                mediumBody
-            default:
-                smallBody
-            }
-        }
+        UsageDashboardView(
+            style: dashboardStyle,
+            usage: usage,
+            errorMessage: nil,
+            isLoading: false,
+            shouldOfferInAppLogin: false,
+            lastUpdated: entry.snapshot?.fetchedAt,
+            unavailableMessage: unavailableMessage
+        )
+        .padding()
         .containerBackground(for: .widget) {
             LinearGradient(
                 colors: [
@@ -68,52 +70,19 @@ private struct ClaudeUsageWidgetEntryView: View {
         }
     }
 
-    private var smallBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            headerText
-
-            if let usage {
-                UsageMetricsView(usage: usage, style: .widgetCompact)
-            } else {
-                unavailableText
-            }
-
-            Spacer(minLength: 0)
+    private var dashboardStyle: UsageDashboardStyle {
+        switch family {
+        case .systemMedium:
+            return .widgetMedium
+        default:
+            return .widgetSmall
         }
-        .padding()
     }
 
-    private var mediumBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            headerText
-
-            if let usage {
-                UsageMetricsView(usage: usage, style: .widgetProgress)
-
-                if let fetchedAt = entry.snapshot?.fetchedAt {
-                    Text("Updated \(fetchedAt, style: .relative) ago")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                unavailableText
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding()
-    }
-
-    private var headerText: some View {
-        Text("Claude Usage")
-            .font(.headline)
-    }
-
-    private var unavailableText: some View {
-        Text(entry.isPlaceholder ? "Usage preview" : "Open the app to sign in and refresh usage.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.leading)
+    private var unavailableMessage: String {
+        entry.isPlaceholder
+            ? "Usage preview"
+            : "Open the app to sign in and refresh usage."
     }
 }
 

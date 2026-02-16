@@ -8,29 +8,16 @@ struct ClaudeUsageiOSHomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    headerSection
-
-                    if let error = viewModel.error {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label(error, systemImage: "exclamationmark.triangle.fill")
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-
-                            if viewModel.shouldOfferInAppLogin {
-                                Button(action: { viewModel.startInAppOAuthLogin() }) {
-                                    Label("Sign In with Claude", systemImage: "person.badge.key")
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                        }
-                    }
-
-                    usageSection
-
-                    footerSection
-                }
+                UsageDashboardView(
+                    style: .iosHome,
+                    usage: viewModel.usage,
+                    errorMessage: viewModel.error,
+                    isLoading: viewModel.isLoading,
+                    shouldOfferInAppLogin: viewModel.shouldOfferInAppLogin,
+                    lastUpdated: viewModel.lastUpdated,
+                    unavailableMessage: "No usage data yet. Pull to refresh or try again in a moment.",
+                    onLogin: { viewModel.startInAppOAuthLogin() }
+                )
                 .padding()
             }
             .navigationTitle("Usage")
@@ -57,40 +44,6 @@ struct ClaudeUsageiOSHomeView: View {
                     }
                 )
             }
-        }
-    }
-
-    @ViewBuilder
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Claude Usage")
-                .font(.title2.weight(.semibold))
-
-            if viewModel.isLoading && viewModel.usage == nil {
-                ProgressView("Loading usage…")
-                    .font(.subheadline)
-            } else if viewModel.usage == nil && !viewModel.shouldOfferInAppLogin {
-                Text("No usage data yet. Pull to refresh or try again in a moment.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var usageSection: some View {
-        if let usage = viewModel.usage {
-            UsageMetricsView(usage: usage, style: .card)
-        }
-    }
-
-    @ViewBuilder
-    private var footerSection: some View {
-        if let lastUpdated = viewModel.lastUpdated {
-            Text("Updated \(lastUpdated, style: .relative) ago")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
