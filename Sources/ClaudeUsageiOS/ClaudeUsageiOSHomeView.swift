@@ -42,7 +42,7 @@ struct ClaudeUsageiOSHomeView: View {
                 }
             }
         }
-        .sheet(isPresented: $viewModel.isShowingOAuthLogin) {
+        .fullScreenCover(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {
                 OAuthLoginSheet(
                     authorizationURL: authorizationURL,
