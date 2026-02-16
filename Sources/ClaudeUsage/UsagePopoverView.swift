@@ -1,4 +1,5 @@
 import SwiftUI
+import ClaudeUsageKit
 
 struct UsagePopoverView: View {
     @ObservedObject var viewModel: UsageViewModel

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import ClaudeUsageKit
 
 @MainActor
 final class UsageViewModel: ObservableObject {

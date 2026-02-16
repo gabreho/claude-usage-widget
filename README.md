@@ -70,11 +70,12 @@ On `401`, the app surfaces a refresh hint (`claude auth login`).
 ## Project Structure
 
 - `ClaudeUsage.xcodeproj`: native macOS app project
+- `ClaudeUsageKit/`: local Swift package shared by app and widget targets
+- `ClaudeUsageKit/Sources/ClaudeUsageKit/UsageModels.swift`: usage API models and tiers
+- `ClaudeUsageKit/Sources/ClaudeUsageKit/UsageService.swift`: keychain read + API client + error mapping
 - `ClaudeUsage/Info.plist`: app metadata (`LSUIElement=YES`)
 - `Sources/ClaudeUsage/ClaudeUsageApp.swift`: app entry + menu bar scene
 - `Sources/ClaudeUsage/UsageViewModel.swift`: state, refresh loop, menu bar label/icon
-- `Sources/ClaudeUsage/UsageService.swift`: keychain read + API client + error mapping
-- `Sources/ClaudeUsage/UsageModels.swift`: API response models + utilization tiers
 - `Sources/ClaudeUsage/UsagePopoverView.swift`: popover UI and progress rows
 
 ## Known Gaps

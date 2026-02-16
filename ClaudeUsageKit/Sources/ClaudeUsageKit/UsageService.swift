@@ -1,37 +1,37 @@
 import Foundation
 import Security
 
-enum UsageServiceError: LocalizedError {
+public enum UsageServiceError: LocalizedError {
     case keychainNotFound
     case tokenMissing
     case networkError(Error)
     case httpError(statusCode: Int, message: String?)
     case decodingError(Error)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .keychainNotFound:
             return "Claude Code credentials not found in Keychain"
         case .tokenMissing:
             return "OAuth access token missing from credentials"
-        case .networkError(let e):
-            return "Network error: \(e.localizedDescription)"
-        case .httpError(let code, let message):
-            switch code {
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
+        case .httpError(let statusCode, let message):
+            switch statusCode {
             case 401:
                 return "Token expired — run `claude auth login` to refresh"
             case 403:
                 return message ?? "Access denied (HTTP 403)"
             default:
-                return message ?? "API returned HTTP \(code)"
+                return message ?? "API returned HTTP \(statusCode)"
             }
-        case .decodingError(let e):
-            return "Failed to decode response: \(e.localizedDescription)"
+        case .decodingError(let error):
+            return "Failed to decode response: \(error.localizedDescription)"
         }
     }
 }
 
-struct UsageService {
+public struct UsageService {
     private static let apiURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
     private static let keychainService = "Claude Code-credentials"
 
@@ -68,7 +68,7 @@ struct UsageService {
         return message
     }
 
-    static func fetchUsage() async throws -> UsageResponse {
+    public static func fetchUsage() async throws -> UsageResponse {
         let token = try readAccessToken()
 
         var request = URLRequest(url: apiURL)
@@ -78,7 +78,8 @@ struct UsageService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
 
-        let (data, response): (Data, URLResponse)
+        let data: Data
+        let response: URLResponse
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
