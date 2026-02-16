@@ -182,6 +182,27 @@ public struct UsageService {
         try writeUpdatedCredentials(rootJSONForWrite, account: accountForWrite)
     }
 
+    private static func readKeychainData(forAccount account: String) -> (data: Data, account: String)? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess,
+              let item = result as? [String: Any],
+              let data = item[kSecValueData as String] as? Data else {
+            return nil
+        }
+        return (data, account)
+    }
+
     private static func readKeychainData() throws -> (data: Data, account: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -239,7 +260,13 @@ public struct UsageService {
     }
 
     private static func readStoredCredentials() throws -> (rootJSON: [String: Any], credentials: OAuthCredentials, account: String) {
-        let (data, account) = try readKeychainData()
+        // Prefer in-app OAuth credentials; fall back to Claude Code's entry.
+        let (data, account): (Data, String)
+        if let inApp = readKeychainData(forAccount: inAppOAuthAccount) {
+            (data, account) = inApp
+        } else {
+            (data, account) = try readKeychainData()
+        }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let oauthDict = json["claudeAiOauth"] as? [String: Any] else {
@@ -512,11 +539,12 @@ public struct UsageService {
     }
 
     private static func currentCredentialsRootJSONForWrite() -> (rootJSON: [String: Any], account: String) {
-        guard let existing = try? readKeychainData() else {
+        // Always target the in-app account to avoid overwriting Claude Code's credentials.
+        guard let existing = readKeychainData(forAccount: inAppOAuthAccount) else {
             return ([:], inAppOAuthAccount)
         }
         let rootJSON = (try? JSONSerialization.jsonObject(with: existing.data) as? [String: Any]) ?? [:]
-        return (rootJSON, existing.account)
+        return (rootJSON, inAppOAuthAccount)
     }
 
     private static func refreshCredentialsIfNeeded(
