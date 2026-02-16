@@ -14,15 +14,25 @@ struct UsagePopoverView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
-                .disabled(viewModel.isLoading)
+                .disabled(viewModel.isLoading || viewModel.isCompletingOAuthLogin)
             }
 
             Divider()
 
             if let error = viewModel.error {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .foregroundColor(.red)
-                    .font(.caption)
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundColor(.red)
+                        .font(.caption)
+
+                    if viewModel.shouldOfferInAppLogin {
+                        Button(action: { viewModel.startInAppOAuthLogin() }) {
+                            Label("Sign In with Claude", systemImage: "person.badge.key")
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                    }
+                }
             }
 
             if let usage = viewModel.usage {
@@ -39,6 +49,12 @@ struct UsagePopoverView: View {
             } else if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity)
+            } else if viewModel.shouldOfferInAppLogin {
+                Button(action: { viewModel.startInAppOAuthLogin() }) {
+                    Label("Sign In with Claude", systemImage: "person.badge.key")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
             }
 
             Divider()
@@ -59,6 +75,21 @@ struct UsagePopoverView: View {
         }
         .padding()
         .frame(width: 280)
+        .sheet(isPresented: $viewModel.isShowingOAuthLogin) {
+            if let authorizationURL = viewModel.oauthAuthorizationURL {
+                OAuthLoginSheet(
+                    authorizationURL: authorizationURL,
+                    isCompletingLogin: viewModel.isCompletingOAuthLogin,
+                    onCancel: { viewModel.cancelInAppOAuthLogin() },
+                    onCodeReceived: { code, state in
+                        viewModel.completeInAppOAuthLogin(code: code, returnedState: state)
+                    },
+                    onFailure: { message in
+                        viewModel.handleInAppOAuthFailure(message)
+                    }
+                )
+            }
+        }
     }
 }
 

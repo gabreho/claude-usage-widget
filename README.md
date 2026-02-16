@@ -58,14 +58,19 @@ After launch, it appears in the menu bar as a gauge icon plus percentage.
 
 ## Authentication and Data Source
 
-- Access token source: macOS Keychain service `Claude Code-credentials`
-- Expected token shape: JSON containing `claudeAiOauth.accessToken`
+- Access token source:
+  - Existing Claude CLI credentials in macOS Keychain service `Claude Code-credentials`
+  - In-app OAuth login flow (`WKWebView` + PKCE) when credentials are missing/invalid
+- Expected token shape in keychain JSON: `claudeAiOauth.accessToken` (plus refresh token + expiry)
 - API endpoint: `https://api.anthropic.com/api/oauth/usage`
 - Request headers include:
   - `Authorization: Bearer <token>`
   - `anthropic-beta: oauth-2025-04-20`
 
-On `401`, the app surfaces a refresh hint (`claude auth login`).
+OAuth login bootstrap flow:
+- Authorize URL: `https://claude.ai/oauth/authorize`
+- Callback URL: `https://platform.claude.com/oauth/code/callback`
+- Token endpoint: `https://platform.claude.com/v1/oauth/token`
 
 ## iOS Token Bootstrap Strategy
 
@@ -82,6 +87,7 @@ On `401`, the app surfaces a refresh hint (`claude auth login`).
 - `Sources/ClaudeUsage/ClaudeUsageApp.swift`: app entry + menu bar scene
 - `Sources/ClaudeUsage/UsageViewModel.swift`: state, refresh loop, menu bar label/icon
 - `Sources/ClaudeUsage/UsagePopoverView.swift`: popover UI and progress rows
+- `Sources/ClaudeUsage/OAuthLoginSheet.swift`: in-app OAuth login sheet + `WKWebView` callback capture
 - `Sources/ClaudeUsageiOS/`: iOS host app scaffold
 - `Sources/ClaudeUsageWidget/`: iOS widget extension scaffold
 - `ClaudeUsageiOS/Info.plist`: iOS host app metadata
@@ -91,7 +97,6 @@ On `401`, the app surfaces a refresh hint (`claude auth login`).
 ## Known Gaps
 
 - No automated tests yet.
-- No in-app OAuth flow yet (depends on roadmap items above).
 - No threshold notifications yet.
 
 ## Issue Tracking Workflow

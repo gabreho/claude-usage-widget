@@ -7,10 +7,15 @@ final class UsageViewModel: ObservableObject {
     @Published var usage: UsageResponse?
     @Published var error: String?
     @Published var isLoading = false
+    @Published var isCompletingOAuthLogin = false
     @Published var lastUpdated: Date?
+    @Published var oauthAuthorizationURL: URL?
+    @Published var isShowingOAuthLogin = false
 
     private var refreshTimer: Timer?
     private let refreshInterval: TimeInterval = 300
+    private var lastServiceError: UsageServiceError?
+    private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -43,6 +48,10 @@ final class UsageViewModel: ObservableObject {
         }
     }
 
+    var shouldOfferInAppLogin: Bool {
+        lastServiceError?.supportsInAppLoginRecovery == true
+    }
+
     func startAutoRefresh() {
         refresh()
         refreshTimer?.invalidate()
@@ -62,7 +71,7 @@ final class UsageViewModel: ObservableObject {
     }
 
     func refresh() {
-        guard !isLoading else { return }
+        guard !isLoading, !isCompletingOAuthLogin else { return }
         isLoading = true
         error = nil
 
@@ -72,10 +81,67 @@ final class UsageViewModel: ObservableObject {
                 self.usage = result
                 self.lastUpdated = Date()
                 self.error = nil
+                self.lastServiceError = nil
             } catch {
+                self.lastServiceError = error as? UsageServiceError
                 self.error = error.localizedDescription
             }
             self.isLoading = false
         }
+    }
+
+    func startInAppOAuthLogin() {
+        let session = UsageService.createOAuthAuthorizationSession()
+        oauthAuthorizationSession = session
+        oauthAuthorizationURL = session.authorizationURL
+        isShowingOAuthLogin = true
+        error = nil
+    }
+
+    func cancelInAppOAuthLogin() {
+        isShowingOAuthLogin = false
+        oauthAuthorizationURL = nil
+        oauthAuthorizationSession = nil
+        isCompletingOAuthLogin = false
+    }
+
+    func completeInAppOAuthLogin(code: String, returnedState: String?) {
+        guard let session = oauthAuthorizationSession else {
+            error = "OAuth session expired. Please try signing in again."
+            return
+        }
+
+        if let returnedState,
+           !returnedState.isEmpty,
+           returnedState != session.state {
+            error = "OAuth state mismatch. Please try signing in again."
+            cancelInAppOAuthLogin()
+            return
+        }
+
+        isCompletingOAuthLogin = true
+        error = nil
+
+        Task {
+            do {
+                try await UsageService.completeOAuthAuthorization(
+                    code: code,
+                    state: session.state,
+                    codeVerifier: session.codeVerifier
+                )
+                self.lastServiceError = nil
+                self.cancelInAppOAuthLogin()
+                self.refresh()
+            } catch {
+                self.lastServiceError = error as? UsageServiceError
+                self.error = error.localizedDescription
+                self.cancelInAppOAuthLogin()
+            }
+        }
+    }
+
+    func handleInAppOAuthFailure(_ message: String) {
+        error = message
+        cancelInAppOAuthLogin()
     }
 }

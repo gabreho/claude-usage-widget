@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import Security
 
 public enum UsageServiceError: LocalizedError {
@@ -8,6 +9,7 @@ public enum UsageServiceError: LocalizedError {
     case refreshTokenMissing
     case tokenExpiryMissing
     case tokenExpiryInvalid
+    case oauthCodeMissing
     case keychainWriteFailed(status: OSStatus)
     case networkError(Error)
     case httpError(statusCode: Int, message: String?)
@@ -27,6 +29,8 @@ public enum UsageServiceError: LocalizedError {
             return "OAuth token expiry missing from credentials"
         case .tokenExpiryInvalid:
             return "OAuth token expiry is invalid"
+        case .oauthCodeMissing:
+            return "OAuth authorization code missing from callback"
         case .keychainWriteFailed(let status):
             return "Failed to update OAuth credentials in Keychain (OSStatus \(status))"
         case .networkError(let error):
@@ -34,7 +38,7 @@ public enum UsageServiceError: LocalizedError {
         case .httpError(let statusCode, let message):
             switch statusCode {
             case 401:
-                return "Token expired — run `claude auth login` to refresh"
+                return "Token expired — sign in again (or run `claude auth login`)"
             case 403:
                 return message ?? "Access denied (HTTP 403)"
             default:
@@ -44,12 +48,46 @@ public enum UsageServiceError: LocalizedError {
             return "Failed to decode response: \(error.localizedDescription)"
         }
     }
+
+    public var supportsInAppLoginRecovery: Bool {
+        switch self {
+        case .keychainNotFound,
+             .keychainAccountMissing,
+             .tokenMissing,
+             .refreshTokenMissing,
+             .tokenExpiryMissing,
+             .tokenExpiryInvalid,
+             .oauthCodeMissing:
+            return true
+        case .httpError(let statusCode, _):
+            return statusCode == 401
+        default:
+            return false
+        }
+    }
 }
 
 public struct UsageService {
     private static let apiURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
-    private static let oauthTokenURL = URL(string: "https://console.anthropic.com/v1/oauth/token")!
+    private static let oauthTokenURL = URL(string: "https://platform.claude.com/v1/oauth/token")!
+    private static let oauthAuthorizeURL = URL(string: "https://claude.ai/oauth/authorize")!
+    private static let oauthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+    private static let oauthAuthorizeScopes = [
+        "org:create_api_key",
+        "user:profile",
+        "user:inference",
+        "user:sessions:claude_code",
+        "user:mcp_servers"
+    ]
+    private static let oauthRefreshScopes = [
+        "user:profile",
+        "user:inference",
+        "user:sessions:claude_code",
+        "user:mcp_servers"
+    ]
+    public static let oauthRedirectURI = "https://platform.claude.com/oauth/code/callback"
     private static let keychainService = "Claude Code-credentials"
+    private static let inAppOAuthAccount = "claude-usage-in-app-oauth"
     private static let refreshSkewSeconds: TimeInterval = 300
     private static let iso8601WithFractionalSecondsFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
@@ -68,11 +106,80 @@ public struct UsageService {
         let expiresAt: Date
     }
 
+    public struct OAuthAuthorizationSession {
+        public let authorizationURL: URL
+        public let state: String
+        public let codeVerifier: String
+
+        public init(authorizationURL: URL, state: String, codeVerifier: String) {
+            self.authorizationURL = authorizationURL
+            self.state = state
+            self.codeVerifier = codeVerifier
+        }
+    }
+
     private struct RefreshedTokens {
         let accessToken: String
         let refreshToken: String
         let expiresAt: Date
         let expiresAtStorageValue: Any
+    }
+
+    public static var oauthRedirectURL: URL {
+        URL(string: oauthRedirectURI)!
+    }
+
+    public static func createOAuthAuthorizationSession() -> OAuthAuthorizationSession {
+        let codeVerifier = randomURLSafeString(byteCount: 32)
+        let codeChallenge = pkceCodeChallenge(for: codeVerifier)
+        let state = randomURLSafeString(byteCount: 24)
+
+        var components = URLComponents(url: oauthAuthorizeURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "code", value: "true"),
+            URLQueryItem(name: "client_id", value: oauthClientID),
+            URLQueryItem(name: "response_type", value: "code"),
+            URLQueryItem(name: "redirect_uri", value: oauthRedirectURI),
+            URLQueryItem(name: "scope", value: oauthAuthorizeScopes.joined(separator: " ")),
+            URLQueryItem(name: "code_challenge", value: codeChallenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "state", value: state)
+        ]
+
+        return OAuthAuthorizationSession(
+            authorizationURL: components.url!,
+            state: state,
+            codeVerifier: codeVerifier
+        )
+    }
+
+    public static func completeOAuthAuthorization(
+        code: String,
+        state: String,
+        codeVerifier: String
+    ) async throws {
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCode.isEmpty else {
+            throw UsageServiceError.oauthCodeMissing
+        }
+
+        let exchanged = try await exchangeAuthorizationCode(
+            code: trimmedCode,
+            state: state,
+            codeVerifier: codeVerifier
+        )
+
+        let currentCredentials = currentCredentialsRootJSONForWrite()
+        var rootJSONForWrite = currentCredentials.rootJSON
+        let accountForWrite = currentCredentials.account
+
+        var oauthJSON = (rootJSONForWrite["claudeAiOauth"] as? [String: Any]) ?? [:]
+        oauthJSON["accessToken"] = exchanged.accessToken
+        oauthJSON["refreshToken"] = exchanged.refreshToken
+        oauthJSON["expiresAt"] = exchanged.expiresAtStorageValue
+        rootJSONForWrite["claudeAiOauth"] = oauthJSON
+
+        try writeUpdatedCredentials(rootJSONForWrite, account: accountForWrite)
     }
 
     private static func readKeychainData() throws -> (data: Data, account: String) {
@@ -214,7 +321,21 @@ public struct UsageService {
         return nil
     }
 
-    private static func parseRefreshedTokens(from data: Data) throws -> RefreshedTokens {
+    private static func randomURLSafeString(byteCount: Int) -> String {
+        var bytes = [UInt8](repeating: 0, count: byteCount)
+        let status = SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes)
+        if status != errSecSuccess {
+            return Data(UUID().uuidString.utf8).base64URLEncodedString()
+        }
+        return Data(bytes).base64URLEncodedString()
+    }
+
+    private static func pkceCodeChallenge(for codeVerifier: String) -> String {
+        let digest = SHA256.hash(data: Data(codeVerifier.utf8))
+        return Data(digest).base64URLEncodedString()
+    }
+
+    private static func parseOAuthTokens(from data: Data) throws -> RefreshedTokens {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw UsageServiceError.decodingError(
                 NSError(domain: "UsageService", code: -2, userInfo: [NSLocalizedDescriptionKey: "OAuth token response was not a JSON object"])
@@ -258,17 +379,75 @@ public struct UsageService {
         throw UsageServiceError.tokenExpiryMissing
     }
 
-    private static func refreshTokens(using refreshToken: String) async throws -> RefreshedTokens {
-        var bodyComponents = URLComponents()
-        bodyComponents.queryItems = [
-            URLQueryItem(name: "grant_type", value: "refresh_token"),
-            URLQueryItem(name: "refresh_token", value: refreshToken)
+    private static func exchangeAuthorizationCode(
+        code: String,
+        state: String,
+        codeVerifier: String
+    ) async throws -> RefreshedTokens {
+        let requestBody: [String: Any] = [
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": oauthRedirectURI,
+            "client_id": oauthClientID,
+            "code_verifier": codeVerifier,
+            "state": state
         ]
-        let body = bodyComponents.percentEncodedQuery ?? ""
+
+        let bodyData: Data
+        do {
+            bodyData = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            throw UsageServiceError.decodingError(error)
+        }
+
         var request = URLRequest(url: oauthTokenURL)
         request.httpMethod = "POST"
-        request.httpBody = body.data(using: .utf8)
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = bodyData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 20
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw UsageServiceError.networkError(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw UsageServiceError.networkError(
+                NSError(domain: "UsageService", code: -1)
+            )
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = parseErrorMessage(from: data)
+            throw UsageServiceError.httpError(statusCode: httpResponse.statusCode, message: message)
+        }
+
+        return try parseOAuthTokens(from: data)
+    }
+
+    private static func refreshTokens(using refreshToken: String) async throws -> RefreshedTokens {
+        let requestBody: [String: Any] = [
+            "grant_type": "refresh_token",
+            "refresh_token": refreshToken,
+            "client_id": oauthClientID,
+            "scope": oauthRefreshScopes.joined(separator: " ")
+        ]
+
+        let bodyData: Data
+        do {
+            bodyData = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            throw UsageServiceError.decodingError(error)
+        }
+
+        var request = URLRequest(url: oauthTokenURL)
+        request.httpMethod = "POST"
+        request.httpBody = bodyData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
 
@@ -291,14 +470,13 @@ public struct UsageService {
             throw UsageServiceError.httpError(statusCode: httpResponse.statusCode, message: message)
         }
 
-        return try parseRefreshedTokens(from: data)
+        return try parseOAuthTokens(from: data)
     }
 
-    private static func writeUpdatedCredentials(
-        _ rootJSON: [String: Any],
+    private static func writeCredentialsData(
+        _ data: Data,
         account: String
     ) throws {
-        let data = try JSONSerialization.data(withJSONObject: rootJSON)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -310,9 +488,35 @@ public struct UsageService {
         ]
 
         let status = SecItemUpdate(query as CFDictionary, attributesToUpdate as CFDictionary)
-        guard status == errSecSuccess else {
+        switch status {
+        case errSecSuccess:
+            return
+        case errSecItemNotFound:
+            var itemToAdd = query
+            itemToAdd[kSecValueData as String] = data
+            let addStatus = SecItemAdd(itemToAdd as CFDictionary, nil)
+            guard addStatus == errSecSuccess else {
+                throw UsageServiceError.keychainWriteFailed(status: addStatus)
+            }
+        default:
             throw UsageServiceError.keychainWriteFailed(status: status)
         }
+    }
+
+    private static func writeUpdatedCredentials(
+        _ rootJSON: [String: Any],
+        account: String
+    ) throws {
+        let data = try JSONSerialization.data(withJSONObject: rootJSON)
+        try writeCredentialsData(data, account: account)
+    }
+
+    private static func currentCredentialsRootJSONForWrite() -> (rootJSON: [String: Any], account: String) {
+        guard let existing = try? readKeychainData() else {
+            return ([:], inAppOAuthAccount)
+        }
+        let rootJSON = (try? JSONSerialization.jsonObject(with: existing.data) as? [String: Any]) ?? [:]
+        return (rootJSON, existing.account)
     }
 
     private static func refreshCredentialsIfNeeded(
@@ -381,5 +585,14 @@ public struct UsageService {
         } catch {
             throw UsageServiceError.decodingError(error)
         }
+    }
+}
+
+private extension Data {
+    func base64URLEncodedString() -> String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
