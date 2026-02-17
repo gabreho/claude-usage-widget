@@ -1,112 +1,116 @@
 # Claude Usage
 
-Small macOS menu bar app that shows your Claude usage limits in near real time.
+A lightweight Apple ecosystem app that shows your Claude API usage limits in real time. Runs as a menu bar app on macOS and as a full app with home screen widgets on iOS.
 
-## What It Does
+## Features
 
-- Runs as a `MenuBarExtra` app (no Dock icon).
-- Fetches usage from Anthropic's OAuth usage endpoint.
-- Shows:
-  - Session utilization (5-hour window)
-  - Weekly utilization (7-day window)
-  - Optional Opus/Sonnet 7-day buckets when present
-- Uses color tiers for quick scanning:
-  - Green: `< 50%`
-  - Yellow: `50-79%`
-  - Red: `>= 80%`
-- Auto-refreshes every 5 minutes, with manual refresh in the popover.
-
-## Current Status (Feb 15, 2026)
-
-- Build status: `xcodebuild -project ClaudeUsage.xcodeproj -scheme ClaudeUsage -configuration Debug -derivedDataPath .build/DerivedData build` passes.
-- Issue tracker (`bd status`) snapshot:
-  - Total issues: `18`
-  - Open: `16`
-  - Closed: `2`
-  - Ready to work: `9`
-- Latest completed item: Xcode app bundle migration (`claude-usage-rff`).
-- Highest-priority open work:
-  - `claude-usage-0hd`: OAuth token auto-refresh
-  - `claude-usage-1bx`: In-app OAuth login via `WKWebView`
-  - `claude-usage-qjp`: Auth path routing (depends on the two items above)
+- **Session utilization** (5-hour rolling window) and **weekly utilization** (7-day rolling window)
+- Optional per-model breakdowns (Opus / Sonnet) when available
+- Color-coded tiers for quick scanning: green (< 50%), yellow (50-79%), red (>= 80%)
+- Auto-refreshes every 5 minutes, plus manual refresh
+- **macOS**: menu bar extra with gauge icon and percentage — no Dock icon
+- **iOS**: full app + WidgetKit home screen widget (small and medium sizes)
+- In-app OAuth login (PKCE) or automatic credential borrowing from Claude Code CLI
 
 ## Requirements
 
-- macOS `14+`
-- Xcode with Swift toolchain support
-- Claude CLI authenticated on this machine
+- Xcode 15+ with Swift toolchain
+- macOS 14+ (menu bar app) or iOS 15+ (mobile app)
+- A Claude account (Pro, Team, or Enterprise) with API access
 
-## Quick Start
+## Getting Started
 
 ```bash
-# 1) Authenticate Claude CLI (if not already authenticated)
-claude auth login
-
-# 2) Open the app project
+git clone https://github.com/gabreho/claude-usage.git
+cd claude-usage
 open ClaudeUsage.xcodeproj
 ```
 
-Then in Xcode:
+In Xcode:
 
-1. Select the `ClaudeUsage` scheme
-2. Choose `My Mac` destination
-3. Press Run
+1. Select a scheme: **ClaudeUsage** (macOS) or **ClaudeUsageiOS** (iOS)
+2. Choose a destination: **My Mac** or an iOS Simulator
+3. Press **Run** (Cmd+R)
 
-If Xcode asks for signing settings, open target settings and pick your development team under `Signing & Capabilities` (automatic signing is enabled).
+> If Xcode asks for signing settings, open the target's **Signing & Capabilities** tab and pick your development team. Automatic signing is enabled.
 
-After launch, it appears in the menu bar as a gauge icon plus percentage.
+## Authentication
 
-## Authentication and Data Source
+The app needs an OAuth access token to call `https://api.anthropic.com/api/oauth/usage`. There are two ways to authenticate:
 
-- Access token source:
-  - Existing Claude CLI credentials in macOS Keychain service `Claude Code-credentials`
-  - In-app OAuth login flow (`WKWebView` + PKCE) when credentials are missing/invalid
-- Expected token shape in keychain JSON: `claudeAiOauth.accessToken` (plus refresh token + expiry)
-- API endpoint: `https://api.anthropic.com/api/oauth/usage`
-- Request headers include:
-  - `Authorization: Bearer <token>`
-  - `anthropic-beta: oauth-2025-04-20`
+### Option 1: Claude Code CLI (macOS only)
 
-OAuth login bootstrap flow:
-- Authorize URL: `https://claude.ai/oauth/authorize`
-- Callback URL: `https://platform.claude.com/oauth/code/callback`
-- Token endpoint: `https://platform.claude.com/v1/oauth/token`
+If you already use [Claude Code](https://docs.anthropic.com/en/docs/claude-code), the app will automatically read your credentials from the macOS Keychain. No extra setup needed — just make sure you're logged in:
 
-## iOS Token Bootstrap Strategy
+```bash
+claude auth login
+```
 
-- Decision: use full in-app OAuth (webview-based) bootstrap on iOS.
-- Rationale and alternatives: `docs/ios-token-strategy.md`.
+The app reads these credentials but **never modifies or refreshes them**, so your CLI session stays intact.
+
+### Option 2: In-app OAuth Login
+
+If you don't have Claude Code installed, or you're on iOS, the app will show a login button. Tapping it opens an in-app browser where you sign in with your Claude account. The app handles the full OAuth PKCE flow and stores its own credentials separately in the Keychain.
 
 ## Project Structure
 
-- `ClaudeUsage.xcodeproj`: native macOS app project
-- `ClaudeUsageKit/`: local Swift package shared by app and widget targets
-- `ClaudeUsageKit/Sources/ClaudeUsageKit/UsageModels.swift`: usage API models and tiers
-- `ClaudeUsageKit/Sources/ClaudeUsageKit/UsageService.swift`: keychain read + API client + error mapping
-- `ClaudeUsage/Info.plist`: app metadata (`LSUIElement=YES`)
-- `Sources/ClaudeUsage/ClaudeUsageApp.swift`: app entry + menu bar scene
-- `Sources/ClaudeUsage/UsageViewModel.swift`: state, refresh loop, menu bar label/icon
-- `Sources/ClaudeUsage/UsagePopoverView.swift`: popover UI and progress rows
-- `Sources/Shared/OAuthLoginView.swift`: shared in-app OAuth login view + `WKWebView` callback capture
-- `Sources/ClaudeUsageiOS/`: iOS host app scaffold
-- `Sources/ClaudeUsageWidget/`: iOS widget extension scaffold
-- `ClaudeUsageiOS/Info.plist`: iOS host app metadata
-- `ClaudeUsageWidget/Info.plist`: widget extension metadata
-- `docs/ios-token-strategy.md`: iOS OAuth bootstrap decision record
+```
+claude-usage/
+├── ClaudeUsage.xcodeproj              # Xcode project (all targets)
+├── ClaudeUsageKit/                    # Shared Swift package
+│   └── Sources/ClaudeUsageKit/
+│       ├── UsageService.swift         # API client + credential management
+│       ├── UsageModels.swift          # Data models + tier logic
+│       ├── KeychainService.swift      # Keychain read/write
+│       ├── OAuthTokenClient.swift     # Token exchange and refresh
+│       ├── PKCEUtility.swift          # PKCE code challenge generation
+│       ├── UsageDashboardView.swift   # Main dashboard UI
+│       ├── UsageMetricsView.swift     # Usage metric rows
+│       └── UsageWidgetSharedStore.swift # Widget data sharing
+├── Sources/
+│   ├── ClaudeUsage/                   # macOS menu bar app
+│   ├── ClaudeUsageiOS/                # iOS app
+│   ├── ClaudeUsageWidget/             # iOS widget extension
+│   └── Shared/                        # Cross-platform views
+└── docs/
+    └── ios-token-strategy.md          # iOS auth decision record
+```
 
-## Known Gaps
+## How It Works
 
-- No automated tests yet.
-- No threshold notifications yet.
+The app calls Anthropic's OAuth usage endpoint with a bearer token and displays the returned utilization percentages. On macOS, a `MenuBarExtra` scene renders a gauge icon and label in the system menu bar. On iOS, the same data feeds both the main app and a WidgetKit timeline.
 
-## Issue Tracking Workflow
+Credential management is deliberately conservative:
 
-This repo uses `bd` (beads):
+- Tokens obtained through in-app OAuth are stored in a **separate** Keychain entry from Claude Code's
+- Borrowed CLI tokens are read-only — the app never refreshes or overwrites them
+- Token refresh only runs for credentials the app itself created
+
+## Warnings and Notes
+
+- **OAuth Client ID**: The app currently uses Claude Code's public OAuth client ID because Anthropic doesn't yet offer third-party client registration. This may change in the future.
+- **No automated tests**: The project doesn't include unit or integration tests yet. Contributions welcome.
+- **iOS widget refresh**: iOS limits widget updates to roughly every 15 minutes — this is an OS-level constraint, not an app limitation.
+- **Code signing**: You'll need to configure your own development team in Xcode to build and run.
+- **Per-device authentication**: Each device authenticates independently. There's no iCloud Keychain sync between devices.
+
+## Building from the Command Line
 
 ```bash
-bd ready
-bd show <id>
-bd update <id> --status in_progress
-bd close <id>
-bd sync
+# macOS
+xcodebuild -project ClaudeUsage.xcodeproj \
+  -scheme ClaudeUsage \
+  -configuration Debug \
+  build
+
+# iOS (simulator)
+xcodebuild -project ClaudeUsage.xcodeproj \
+  -scheme ClaudeUsageiOS \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  build
 ```
+
+## License
+
+MIT
