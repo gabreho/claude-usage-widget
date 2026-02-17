@@ -60,6 +60,7 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
 
     private let refreshInterval: TimeInterval = 300
     private var refreshTimer: Timer?
+    private var resetTimer: Timer?
     private var startedAutoRefresh = false
     private var lastServiceError: UsageServiceError?
     private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
@@ -91,6 +92,7 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
                 WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
                 self.error = nil
                 self.lastServiceError = nil
+                self.scheduleResetRefresh()
             } catch {
                 self.lastServiceError = error as? UsageServiceError
                 self.error = error.localizedDescription
@@ -152,6 +154,27 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
     func handleInAppOAuthFailure(_ message: String) {
         error = message
         cancelInAppOAuthLogin()
+    }
+
+    private func scheduleResetRefresh() {
+        resetTimer?.invalidate()
+        resetTimer = nil
+
+        guard let usage else { return }
+
+        let now = Date()
+        let resetDates = [usage.fiveHour.resetDate, usage.sevenDay.resetDate].compactMap { $0 }
+        guard let earliest = resetDates.filter({ $0 > now }).min() else { return }
+
+        let delay = earliest.timeIntervalSince(now) + 2
+        resetTimer = Timer.scheduledTimer(
+            withTimeInterval: delay,
+            repeats: false
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refresh()
+            }
+        }
     }
 
     private func startAutoRefreshIfNeeded() {

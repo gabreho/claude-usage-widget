@@ -182,11 +182,16 @@ private struct UsageMetricRow: View {
             }
 
             if layout.showResetDate,
-               let resetDate = limit.resetDate,
-               resetDate > Date() {
-                Text("Resets \(resetDate, style: .relative)")
-                    .font(layout.resetFont)
-                    .foregroundStyle(.secondary)
+               let resetDate = limit.resetDate {
+                // TimelineView re-evaluates at resetDate so the countdown
+                // disappears immediately instead of counting up past zero.
+                TimelineView(.explicit([resetDate])) { context in
+                    if resetDate > context.date {
+                        Text("Resets \(resetDate, style: .relative)")
+                            .font(layout.resetFont)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }

@@ -28,6 +28,7 @@ final class UsageViewModel: ObservableObject {
     }
 
     private var refreshTimer: Timer?
+    private var resetTimer: Timer?
     private let refreshInterval: TimeInterval = 300
     private var lastServiceError: UsageServiceError?
     private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
@@ -103,6 +104,8 @@ final class UsageViewModel: ObservableObject {
     func stopAutoRefresh() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+        resetTimer?.invalidate()
+        resetTimer = nil
     }
 
     func refresh() {
@@ -117,6 +120,7 @@ final class UsageViewModel: ObservableObject {
                 self.lastUpdated = Date()
                 self.error = nil
                 self.lastServiceError = nil
+                self.scheduleResetRefresh()
             } catch {
                 self.lastServiceError = error as? UsageServiceError
                 self.error = error.localizedDescription
@@ -178,6 +182,27 @@ final class UsageViewModel: ObservableObject {
     func handleInAppOAuthFailure(_ message: String) {
         error = message
         cancelInAppOAuthLogin()
+    }
+
+    private func scheduleResetRefresh() {
+        resetTimer?.invalidate()
+        resetTimer = nil
+
+        guard let usage else { return }
+
+        let now = Date()
+        let resetDates = [usage.fiveHour.resetDate, usage.sevenDay.resetDate].compactMap { $0 }
+        guard let earliest = resetDates.filter({ $0 > now }).min() else { return }
+
+        let delay = earliest.timeIntervalSince(now) + 2
+        resetTimer = Timer.scheduledTimer(
+            withTimeInterval: delay,
+            repeats: false
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refresh()
+            }
+        }
     }
 
     private func hasFutureResetDate(for limit: UsageLimit) -> Bool {
