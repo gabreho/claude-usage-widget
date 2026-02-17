@@ -111,6 +111,13 @@ xcodebuild -project ClaudeUsage.xcodeproj \
   build
 ```
 
+## Roadmap
+
+- Show time remaining until usage reset alongside the percentage
+- Track Extra usage metrics (current spend, monthly limit, balance)
+- Threshold notifications when approaching usage limits
+- Dedicated settings service for managing preferences
+
 ## License
 
 MIT
