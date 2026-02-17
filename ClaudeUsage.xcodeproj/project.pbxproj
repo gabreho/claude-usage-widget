@@ -19,6 +19,8 @@
 			B1C2D3E4F506789000000029 /* ClaudeUsageKit in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6078900000031 /* ClaudeUsageKit */; };
 			C3D4E5F60789012345000002 /* OAuthLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60789012345000001 /* OAuthLoginView.swift */; };
 			C3D4E5F60789012345000003 /* OAuthLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60789012345000001 /* OAuthLoginView.swift */; };
+			D4E5F6070890123456000002 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6070890123456000001 /* PreferencesView.swift */; };
+			D4E5F6070890123456000003 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6070890123456000001 /* PreferencesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +60,7 @@
 			B1C2D3E4F506789000000006 /* ClaudeUsageWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeUsageWidget.swift; sourceTree = "<group>"; };
 			B1C2D3E4F506789000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 			C3D4E5F60789012345000001 /* OAuthLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginView.swift; sourceTree = "<group>"; };
+			D4E5F6070890123456000001 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,6 +148,7 @@
 				isa = PBXGroup;
 				children = (
 					C3D4E5F60789012345000001 /* OAuthLoginView.swift */,
+					D4E5F6070890123456000001 /* PreferencesView.swift */,
 				);
 				name = "Sources Shared";
 				path = Sources/Shared;
@@ -317,6 +321,7 @@
 					A1B2C3D4E5F6078900000023 /* UsageViewModel.swift in Sources */,
 					A1B2C3D4E5F6078900000024 /* UsagePopoverView.swift in Sources */,
 					C3D4E5F60789012345000002 /* OAuthLoginView.swift in Sources */,
+					D4E5F6070890123456000002 /* PreferencesView.swift in Sources */,
 				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,6 +332,7 @@
 					B1C2D3E4F50678900000001B /* ClaudeUsageiOSApp.swift in Sources */,
 					B1C2D3E4F50678900000001C /* ClaudeUsageiOSHomeView.swift in Sources */,
 					C3D4E5F60789012345000003 /* OAuthLoginView.swift in Sources */,
+					D4E5F6070890123456000003 /* PreferencesView.swift in Sources */,
 				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

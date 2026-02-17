@@ -4,6 +4,7 @@ import WidgetKit
 
 struct ClaudeUsageiOSHomeView: View {
     @StateObject private var viewModel = ClaudeUsageiOSViewModel()
+    @State private var isShowingPreferences = false
 
     var body: some View {
         NavigationStack {
@@ -22,6 +23,11 @@ struct ClaudeUsageiOSHomeView: View {
             }
             .navigationTitle("Usage")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { isShowingPreferences = true }) {
+                        Image(systemName: "gearshape")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { viewModel.refresh() }) {
                         Image(systemName: "arrow.clockwise")
@@ -29,6 +35,9 @@ struct ClaudeUsageiOSHomeView: View {
                     .disabled(viewModel.isLoading || viewModel.isCompletingOAuthLogin)
                 }
             }
+        }
+        .sheet(isPresented: $isShowingPreferences) {
+            PreferencesView()
         }
         .fullScreenCover(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {

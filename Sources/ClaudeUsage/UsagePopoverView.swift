@@ -3,6 +3,7 @@ import ClaudeUsageKit
 
 struct UsagePopoverView: View {
     @ObservedObject var viewModel: UsageViewModel
+    @State private var isShowingPreferences = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -15,6 +16,10 @@ struct UsagePopoverView: View {
                 lastUpdated: viewModel.lastUpdated,
                 onLogin: { viewModel.startInAppOAuthLogin() },
                 headerAccessory: {
+                    Button(action: { isShowingPreferences = true }) {
+                        Image(systemName: "gearshape")
+                    }
+                    .buttonStyle(.borderless)
                     Button(action: { viewModel.refresh() }) {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -29,17 +34,12 @@ struct UsagePopoverView: View {
                     .font(.caption)
                 }
             )
-
-            Divider()
-
-            Toggle(isOn: menuBarShowsBothUtilizationsBinding) {
-                Text("Show 5h and 7d in menu bar")
-                    .font(.caption)
-            }
-            .toggleStyle(.switch)
         }
         .padding()
         .frame(width: 280)
+        .sheet(isPresented: $isShowingPreferences) {
+            PreferencesView(menuBarShowsBoth: menuBarShowsBothUtilizationsBinding)
+        }
         .sheet(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {
                 OAuthLoginView(
