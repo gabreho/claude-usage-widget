@@ -23,18 +23,27 @@ private struct ClaudeUsageProvider: TimelineProvider {
             return
         }
 
-        completion(currentEntry(at: .now))
+        let snapshot = UsageWidgetSharedStore.load()
+        completion(ClaudeUsageEntry(date: .now, snapshot: snapshot, isPlaceholder: false))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ClaudeUsageEntry>) -> Void) {
-        let now = Date()
-        let entry = currentEntry(at: now)
-        let refreshDate = now.addingTimeInterval(ClaudeUsageWidgetTimeline.refreshInterval)
-        completion(Timeline(entries: [entry], policy: .after(refreshDate)))
-    }
+        Task {
+            let now = Date()
+            let snapshot: UsageWidgetSharedStore.Snapshot?
 
-    private func currentEntry(at date: Date) -> ClaudeUsageEntry {
-        ClaudeUsageEntry(date: date, snapshot: UsageWidgetSharedStore.load(), isPlaceholder: false)
+            if let usage = try? await UsageService.fetchUsage() {
+                let fetched = UsageWidgetSharedStore.Snapshot(usage: usage, fetchedAt: now)
+                UsageWidgetSharedStore.save(fetched)
+                snapshot = fetched
+            } else {
+                snapshot = UsageWidgetSharedStore.load()
+            }
+
+            let entry = ClaudeUsageEntry(date: now, snapshot: snapshot, isPlaceholder: false)
+            let refreshDate = now.addingTimeInterval(ClaudeUsageWidgetTimeline.refreshInterval)
+            completion(Timeline(entries: [entry], policy: .after(refreshDate)))
+        }
     }
 }
 
@@ -95,7 +104,7 @@ struct ClaudeUsageWidget: Widget {
             ClaudeUsageWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Claude Usage")
-        .description("Shows session and weekly Claude usage from the iOS app cache.")
+        .description("Shows your current session and weekly Claude usage.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
