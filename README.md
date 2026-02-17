@@ -2,6 +2,10 @@
 
 A lightweight Apple ecosystem app that shows your Claude API usage limits in real time. Runs as a menu bar app on macOS and as a full app with home screen widgets on iOS.
 
+| macOS | iOS |
+|-------|-----|
+| ![macOS popover](assets/macos.png) | <img src="assets/ios.png" width="280"> |
+
 ## Features
 
 - **Session utilization** (5-hour rolling window) and **weekly utilization** (7-day rolling window)
