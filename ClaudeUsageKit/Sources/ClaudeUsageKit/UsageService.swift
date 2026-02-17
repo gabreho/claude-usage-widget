@@ -159,7 +159,8 @@ public struct UsageService {
         let credentials = try await refreshCredentialsIfNeeded(
             rootJSON: stored.rootJSON,
             credentials: stored.credentials,
-            account: stored.account
+            account: stored.account,
+            isOwnedByApp: stored.isOwnedByApp
         )
 
         var request = URLRequest(url: apiURL)
@@ -197,13 +198,17 @@ public struct UsageService {
 
     // MARK: - Credential Management
 
-    private static func readStoredCredentials() throws -> (rootJSON: [String: Any], credentials: OAuthCredentials, account: String) {
-        // Prefer in-app OAuth credentials; fall back to Claude Code's entry.
-        let (data, account): (Data, String)
+    private static func readStoredCredentials() throws -> (rootJSON: [String: Any], credentials: OAuthCredentials, account: String, isOwnedByApp: Bool) {
+        // Prefer in-app OAuth credentials; fall back to Claude Code's entry (read-only).
+        let data: Data
+        let account: String
+        let isOwnedByApp: Bool
         if let inApp = KeychainService.readKeychainData(forAccount: KeychainService.inAppOAuthAccount) {
             (data, account) = inApp
+            isOwnedByApp = true
         } else {
             (data, account) = try KeychainService.readKeychainData()
+            isOwnedByApp = false
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -234,16 +239,25 @@ public struct UsageService {
                 refreshToken: refreshToken,
                 expiresAt: expiresAt
             ),
-            account
+            account,
+            isOwnedByApp
         )
     }
 
     private static func refreshCredentialsIfNeeded(
         rootJSON: [String: Any],
         credentials: OAuthCredentials,
-        account: String
+        account: String,
+        isOwnedByApp: Bool
     ) async throws -> OAuthCredentials {
         guard credentials.expiresAt.timeIntervalSinceNow <= refreshSkewSeconds else {
+            return credentials
+        }
+
+        // Never refresh tokens we don't own — rotating Claude Code's refresh token
+        // would invalidate their session. Use the access token as-is; if it's expired
+        // the API will return 401 and the user can do an in-app login.
+        guard isOwnedByApp else {
             return credentials
         }
 
