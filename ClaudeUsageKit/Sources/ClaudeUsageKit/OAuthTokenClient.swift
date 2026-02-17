@@ -3,17 +3,11 @@ import Foundation
 struct OAuthTokenClient {
     private static let oauthTokenURL = URL(string: "https://platform.claude.com/v1/oauth/token")!
 
-    // TODO: (claude-usage-4vj) This is Claude Code's client ID — not a dedicated client for this app.
-    // We should investigate registering our own OAuth client and narrowing scopes to only what
-    // /api/oauth/usage requires. Currently both authorize and refresh request the full Claude Code
-    // scope set, which is far more privilege than a usage-only widget needs.
+    // Claude Code's public OAuth client ID (PKCE, no secret). Third-party tools reuse this
+    // since Anthropic doesn't offer a client registration mechanism.
     private static let oauthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
-    private static let oauthRefreshScopes = [
-        "user:profile",
-        "user:inference",
-        "user:sessions:claude_code",
-        "user:mcp_servers"
-    ]
+    // The usage endpoint (/api/oauth/usage) only requires user:profile.
+    private static let oauthRefreshScopes = ["user:profile"]
 
     struct RefreshedTokens {
         let accessToken: String
