@@ -1,7 +1,6 @@
 # iOS Token Bootstrap Strategy
 
 Date: 2026-02-15
-Issue: `claude-usage-rah`
 
 ## Decision
 
