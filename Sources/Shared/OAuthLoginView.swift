@@ -114,6 +114,7 @@ private struct OAuthWebView {
         private var onCodeReceived: (_ code: String, _ state: String?) -> Void
         private var onFailure: (_ message: String) -> Void
         private var didReportResult = false
+        private var hasCompletedAnyNavigation = false
 
         init(
             callbackURL: URL,
@@ -159,6 +160,8 @@ private struct OAuthWebView {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            hasCompletedAnyNavigation = true
+
             guard !didReportResult,
                   let currentURL = webView.url,
                   isOAuthCallback(currentURL) else {
@@ -216,7 +219,7 @@ private struct OAuthWebView {
             didFail navigation: WKNavigation!,
             withError error: Error
         ) {
-            if shouldIgnoreNavigationError(error) {
+            if shouldIgnoreNavigationError(error) || hasCompletedAnyNavigation {
                 return
             }
             reportFailure("Login page failed to load: \(error.localizedDescription)")
@@ -227,7 +230,7 @@ private struct OAuthWebView {
             didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: Error
         ) {
-            if shouldIgnoreNavigationError(error) {
+            if shouldIgnoreNavigationError(error) || hasCompletedAnyNavigation {
                 return
             }
             reportFailure("Login page failed to load: \(error.localizedDescription)")
