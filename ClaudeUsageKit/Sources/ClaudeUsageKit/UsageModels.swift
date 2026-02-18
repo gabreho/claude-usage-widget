@@ -57,7 +57,22 @@ public struct UsageLimit: Codable, Sendable {
     }()
 }
 
-public struct ExtraUsage: Codable, Sendable {}
+public struct ExtraUsage: Codable, Sendable {
+    /// Current month's extra spend in USD (charged when rate limits are exceeded).
+    public let spend: Double?
+    /// User-configured monthly extra spend limit in USD.
+    public let limit: Double?
+    /// Remaining balance in USD (limit − spend).
+    public let balance: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case spend
+        case limit
+        case balance
+    }
+
+    public var hasData: Bool { spend != nil }
+}
 
 public enum UsageTier: Sendable {
     case green
