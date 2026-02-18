@@ -3,7 +3,7 @@ import ClaudeUsageKit
 
 struct UsagePopoverView: View {
     @ObservedObject var viewModel: UsageViewModel
-    @State private var isShowingPreferences = false
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -16,7 +16,7 @@ struct UsagePopoverView: View {
                 lastUpdated: viewModel.lastUpdated,
                 onLogin: { viewModel.startInAppOAuthLogin() },
                 headerAccessory: {
-                    Button(action: { isShowingPreferences = true }) {
+                    Button(action: { openSettings() }) {
                         Image(systemName: "gearshape")
                     }
                     .buttonStyle(.borderless)
@@ -37,9 +37,6 @@ struct UsagePopoverView: View {
         }
         .padding()
         .frame(width: 280)
-        .sheet(isPresented: $isShowingPreferences) {
-            PreferencesView(menuBarShowsBoth: menuBarShowsBothUtilizationsBinding)
-        }
         .sheet(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {
                 OAuthLoginView(
@@ -57,12 +54,4 @@ struct UsagePopoverView: View {
         }
     }
 
-    private var menuBarShowsBothUtilizationsBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.menuBarLabelMode == .both },
-            set: { newValue in
-                viewModel.menuBarLabelMode = newValue ? .both : .highest
-            }
-        )
-    }
 }

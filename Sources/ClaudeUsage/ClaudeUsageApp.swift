@@ -15,5 +15,16 @@ struct ClaudeUsageApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            PreferencesView(menuBarShowsBoth: menuBarShowsBothBinding)
+        }
+    }
+
+    private var menuBarShowsBothBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.menuBarLabelMode == .both },
+            set: { viewModel.menuBarLabelMode = $0 ? .both : .highest }
+        )
     }
 }
