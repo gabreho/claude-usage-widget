@@ -10,7 +10,7 @@ struct PreferencesView: View {
             content
         }
         .formStyle(.grouped)
-        .frame(minWidth: 320, minHeight: 200)
+        .frame(width: 320)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }
