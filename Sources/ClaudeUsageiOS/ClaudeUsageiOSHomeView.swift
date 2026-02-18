@@ -37,7 +37,7 @@ struct ClaudeUsageiOSHomeView: View {
             }
         }
         .sheet(isPresented: $isShowingPreferences) {
-            PreferencesView()
+            PreferencesView(onSignOut: { viewModel.refresh() })
         }
         .fullScreenCover(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {

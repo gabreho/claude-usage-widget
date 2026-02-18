@@ -88,6 +88,15 @@ struct KeychainService {
         try writeCredentialsData(data, account: account)
     }
 
+    static func deleteInAppCredentials() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: inAppOAuthAccount
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+
     static func currentCredentialsRootJSONForWrite() -> (rootJSON: [String: Any], account: String) {
         // Always target the in-app account to avoid overwriting Claude Code's credentials.
         guard let existing = readKeychainData(forAccount: inAppOAuthAccount) else {

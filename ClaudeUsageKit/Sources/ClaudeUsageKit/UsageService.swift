@@ -98,6 +98,16 @@ public struct UsageService {
         URL(string: oauthRedirectURI)!
     }
 
+    // MARK: - Sign Out
+
+    public static var hasInAppCredentials: Bool {
+        KeychainService.readKeychainData(forAccount: KeychainService.inAppOAuthAccount) != nil
+    }
+
+    public static func signOut() {
+        KeychainService.deleteInAppCredentials()
+    }
+
     // MARK: - OAuth Authorization
 
     public static func createOAuthAuthorizationSession() -> OAuthAuthorizationSession {

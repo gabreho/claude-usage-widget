@@ -17,7 +17,10 @@ struct ClaudeUsageApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            PreferencesView(menuBarShowsBoth: menuBarShowsBothBinding)
+            PreferencesView(
+                menuBarShowsBoth: menuBarShowsBothBinding,
+                onSignOut: { viewModel.refresh() }
+            )
         }
     }
 
