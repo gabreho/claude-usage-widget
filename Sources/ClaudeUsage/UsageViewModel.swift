@@ -16,8 +16,7 @@ final class UsageViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isCompletingOAuthLogin = false
     @Published var lastUpdated: Date?
-    @Published var oauthAuthorizationURL: URL?
-    @Published var isShowingOAuthLogin = false
+    @Published var isShowingCodeEntry = false
     @Published var menuBarLabelMode: MenuBarLabelMode {
         didSet {
             UserDefaults.standard.set(
@@ -129,24 +128,41 @@ final class UsageViewModel: ObservableObject {
         }
     }
 
+    func handleSignOut() {
+        usage = nil
+        lastUpdated = nil
+        error = nil
+        lastServiceError = nil
+        refresh()
+    }
+
     func startInAppOAuthLogin() {
         let session = UsageService.createOAuthAuthorizationSession()
         oauthAuthorizationSession = session
-        oauthAuthorizationURL = session.authorizationURL
-        isShowingOAuthLogin = true
+        NSWorkspace.shared.open(session.authorizationURL)
+        isShowingCodeEntry = true
         error = nil
     }
 
     func cancelInAppOAuthLogin() {
-        isShowingOAuthLogin = false
-        oauthAuthorizationURL = nil
+        isShowingCodeEntry = false
         oauthAuthorizationSession = nil
         isCompletingOAuthLogin = false
     }
 
-    func completeInAppOAuthLogin(code: String, returnedState: String?) {
+    func submitOAuthCode(_ raw: String) {
         guard let session = oauthAuthorizationSession else {
             error = "OAuth session expired. Please try signing in again."
+            return
+        }
+
+        // The code page displays codes as "{code}#{state}" — extract just the code part.
+        let parts = raw.split(separator: "#", maxSplits: 1)
+        let code = String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let returnedState = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines) : nil
+
+        guard !code.isEmpty else {
+            error = "Please enter a valid authentication code."
             return
         }
 
@@ -177,11 +193,6 @@ final class UsageViewModel: ObservableObject {
                 self.cancelInAppOAuthLogin()
             }
         }
-    }
-
-    func handleInAppOAuthFailure(_ message: String) {
-        error = message
-        cancelInAppOAuthLogin()
     }
 
     private func scheduleResetRefresh() {
