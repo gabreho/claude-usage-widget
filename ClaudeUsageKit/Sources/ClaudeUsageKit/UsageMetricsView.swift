@@ -58,11 +58,11 @@ public struct UsageMetricsView: View {
             return items
         }
 
-        if let opus = usage.sevenDayOpus, opus.utilization > 0 {
+        if let opus = usage.sevenDayOpus {
             items.append(MetricItem(label: "Opus (7-day)", limit: opus))
         }
 
-        if let sonnet = usage.sevenDaySonnet, sonnet.utilization > 0 {
+        if let sonnet = usage.sevenDaySonnet {
             items.append(MetricItem(label: "Sonnet (7-day)", limit: sonnet))
         }
 
@@ -192,13 +192,11 @@ private struct UsageMetricRow: View {
     }
 
     private var percentText: String {
-        let value: Int
         if layout.roundPercent {
-            value = Int(limit.utilization.rounded())
+            return "\(Int(limit.utilization.rounded()))%"
         } else {
-            value = Int(limit.utilization)
+            return String(format: "%.1f%%", limit.utilization)
         }
-        return "\(value)%"
     }
 
     private var tintColor: Color {

@@ -57,7 +57,67 @@ public struct UsageLimit: Codable, Sendable {
     }()
 }
 
-public struct ExtraUsage: Codable, Sendable {}
+public struct ExtraUsage: Codable, Sendable {
+    /// Whether extra usage is enabled for the account.
+    public let isEnabled: Bool?
+    /// Current monthly extra usage cap in credits.
+    public let monthlyLimit: Double?
+    /// Credits consumed from the monthly extra usage cap.
+    public let usedCredits: Double?
+    /// Percent of monthly extra usage consumed.
+    public let utilization: Double?
+
+    // Legacy fields retained for backward compatibility with previously stored snapshots.
+    private let spend: Double?
+    private let limit: Double?
+    private let balance: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case isEnabled = "is_enabled"
+        case monthlyLimit = "monthly_limit"
+        case usedCredits = "used_credits"
+        case utilization
+        case spend
+        case limit
+        case balance
+    }
+
+    public var effectiveUsedCredits: Double? {
+        usedCredits ?? spend
+    }
+
+    public var effectiveMonthlyLimit: Double? {
+        monthlyLimit ?? limit
+    }
+
+    public var effectiveUtilization: Double? {
+        if let utilization {
+            return utilization
+        }
+        if let used = effectiveUsedCredits,
+           let monthlyLimit = effectiveMonthlyLimit,
+           monthlyLimit > 0 {
+            return (used / monthlyLimit) * 100
+        }
+        return nil
+    }
+
+    public var remainingCredits: Double? {
+        if let monthlyLimit = effectiveMonthlyLimit,
+           let used = effectiveUsedCredits {
+            return max(monthlyLimit - used, 0)
+        }
+        return balance
+    }
+
+    public var hasData: Bool {
+        guard isEnabled != false else { return false }
+        return effectiveUsedCredits != nil
+            || effectiveMonthlyLimit != nil
+            || effectiveUtilization != nil
+            || remainingCredits != nil
+    }
+}
 
 public enum UsageTier: Sendable {
     case green

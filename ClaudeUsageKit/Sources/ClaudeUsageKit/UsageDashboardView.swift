@@ -121,7 +121,13 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
     @ViewBuilder
     private func contentSection(layout: DashboardLayout) -> some View {
         if let usage {
-            UsageMetricsView(usage: usage, style: layout.metricsStyle)
+            VStack(alignment: .leading, spacing: layout.stackSpacing) {
+                UsageMetricsView(usage: usage, style: layout.metricsStyle)
+                if layout.showExtraUsage, let extra = usage.extraUsage, extra.hasData {
+                    Divider()
+                    ExtraUsageSectionView(extra: extra, wrapInCard: layout.extraWrapInCard)
+                }
+            }
         } else if layout.showLoadingInContent && isLoading {
             ProgressView()
                 .frame(maxWidth: .infinity)
@@ -242,6 +248,9 @@ private struct DashboardLayout {
     let showsLastUpdated: Bool
     let footerTimestampFont: Font
 
+    let showExtraUsage: Bool
+    let extraWrapInCard: Bool
+
     init(style: UsageDashboardStyle) {
         switch style {
         case .popover:
@@ -272,6 +281,9 @@ private struct DashboardLayout {
             alwaysShowFooter = true
             showsLastUpdated = true
             footerTimestampFont = .caption2
+
+            showExtraUsage = true
+            extraWrapInCard = false
         case .iosHome:
             stackSpacing = 16
             headerSupplementarySpacing = 8
@@ -300,6 +312,9 @@ private struct DashboardLayout {
             alwaysShowFooter = false
             showsLastUpdated = true
             footerTimestampFont = .caption
+
+            showExtraUsage = true
+            extraWrapInCard = true
         case .widgetSmall:
             stackSpacing = 10
             headerSupplementarySpacing = 6
@@ -328,6 +343,9 @@ private struct DashboardLayout {
             alwaysShowFooter = false
             showsLastUpdated = false
             footerTimestampFont = .caption2
+
+            showExtraUsage = false
+            extraWrapInCard = false
         case .widgetMedium:
             stackSpacing = 10
             headerSupplementarySpacing = 6
@@ -356,6 +374,100 @@ private struct DashboardLayout {
             alwaysShowFooter = false
             showsLastUpdated = true
             footerTimestampFont = .caption2
+
+            showExtraUsage = false
+            extraWrapInCard = false
         }
+    }
+}
+
+private struct ExtraUsageSectionView: View {
+    let extra: ExtraUsage
+    let wrapInCard: Bool
+
+    var body: some View {
+        if wrapInCard {
+            content
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    .thinMaterial,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+        } else {
+            content
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        VStack(alignment: .leading, spacing: wrapInCard ? 8 : 4) {
+            HStack {
+                Text("Extra Usage")
+                    .font(wrapInCard ? .headline : .subheadline.weight(.medium))
+                Spacer()
+                if let usedCredits = extra.effectiveUsedCredits {
+                    Group {
+                        if let monthlyLimit = extra.effectiveMonthlyLimit {
+                            Text("\(usd(usedCredits)) / \(usd(monthlyLimit))")
+                        } else {
+                            Text(usd(usedCredits))
+                        }
+                    }
+                    .font(wrapInCard ? .headline.monospacedDigit() : .subheadline.monospacedDigit())
+                    .foregroundStyle(utilizationColor)
+                }
+            }
+
+            if let usedCredits = extra.effectiveUsedCredits,
+               let monthlyLimit = extra.effectiveMonthlyLimit,
+               monthlyLimit > 0 {
+                ProgressView(value: min(usedCredits, monthlyLimit), total: monthlyLimit)
+                    .tint(utilizationColor)
+            }
+
+            if let utilization = extra.effectiveUtilization {
+                Text("\(percent(utilization)) utilized")
+                    .font(wrapInCard ? .caption : .caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let remaining = extra.remainingCredits {
+                Text("\(usd(remaining)) remaining")
+                    .font(wrapInCard ? .caption : .caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var utilizationColor: Color {
+        let ratio: Double
+        if let utilization = extra.effectiveUtilization {
+            ratio = utilization / 100
+        } else if let usedCredits = extra.effectiveUsedCredits,
+                  let monthlyLimit = extra.effectiveMonthlyLimit,
+                  monthlyLimit > 0 {
+            ratio = usedCredits / monthlyLimit
+        } else {
+            return .primary
+        }
+
+        switch ratio {
+        case ..<0.5: return .green
+        case ..<0.8: return .yellow
+        default: return .red
+        }
+    }
+
+    // The API returns extra usage values in cent-like units (e.g. 1103 => $11.03).
+    private func usd(_ amount: Double) -> String {
+        String(format: "$%.2f", amount / 100)
+    }
+
+    private func percent(_ value: Double) -> String {
+        if value.rounded() == value {
+            return String(format: "%.0f%%", value)
+        }
+        return String(format: "%.1f%%", value)
     }
 }
