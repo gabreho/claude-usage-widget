@@ -406,35 +406,52 @@ private struct ExtraUsageSectionView: View {
                 Text("Extra Usage")
                     .font(wrapInCard ? .headline : .subheadline.weight(.medium))
                 Spacer()
-                if let spend = extra.spend {
+                if let usedCredits = extra.effectiveUsedCredits {
                     Group {
-                        if let limit = extra.limit {
-                            Text("\(usd(spend)) / \(usd(limit))")
+                        if let monthlyLimit = extra.effectiveMonthlyLimit {
+                            Text("\(credits(usedCredits)) / \(credits(monthlyLimit))")
                         } else {
-                            Text(usd(spend))
+                            Text(credits(usedCredits))
                         }
                     }
                     .font(wrapInCard ? .headline.monospacedDigit() : .subheadline.monospacedDigit())
-                    .foregroundStyle(spendColor)
+                    .foregroundStyle(utilizationColor)
                 }
             }
 
-            if let spend = extra.spend, let limit = extra.limit, limit > 0 {
-                ProgressView(value: min(spend, limit), total: limit)
-                    .tint(spendColor)
+            if let usedCredits = extra.effectiveUsedCredits,
+               let monthlyLimit = extra.effectiveMonthlyLimit,
+               monthlyLimit > 0 {
+                ProgressView(value: min(usedCredits, monthlyLimit), total: monthlyLimit)
+                    .tint(utilizationColor)
             }
 
-            if let balance = extra.balance {
-                Text("\(usd(balance)) remaining")
+            if let utilization = extra.effectiveUtilization {
+                Text("\(percent(utilization)) utilized")
+                    .font(wrapInCard ? .caption : .caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let remaining = extra.remainingCredits {
+                Text("\(credits(remaining)) credits remaining")
                     .font(wrapInCard ? .caption : .caption2)
                     .foregroundStyle(.secondary)
             }
         }
     }
 
-    private var spendColor: Color {
-        guard let spend = extra.spend, let limit = extra.limit, limit > 0 else { return .primary }
-        let ratio = spend / limit
+    private var utilizationColor: Color {
+        let ratio: Double
+        if let utilization = extra.effectiveUtilization {
+            ratio = utilization / 100
+        } else if let usedCredits = extra.effectiveUsedCredits,
+                  let monthlyLimit = extra.effectiveMonthlyLimit,
+                  monthlyLimit > 0 {
+            ratio = usedCredits / monthlyLimit
+        } else {
+            return .primary
+        }
+
         switch ratio {
         case ..<0.5: return .green
         case ..<0.8: return .yellow
@@ -442,7 +459,17 @@ private struct ExtraUsageSectionView: View {
         }
     }
 
-    private func usd(_ amount: Double) -> String {
-        String(format: "$%.2f", amount)
+    private func credits(_ amount: Double) -> String {
+        if amount.rounded() == amount {
+            return String(format: "%.0f", amount)
+        }
+        return String(format: "%.1f", amount)
+    }
+
+    private func percent(_ value: Double) -> String {
+        if value.rounded() == value {
+            return String(format: "%.0f%%", value)
+        }
+        return String(format: "%.1f%%", value)
     }
 }
