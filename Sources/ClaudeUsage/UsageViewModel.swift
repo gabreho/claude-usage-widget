@@ -128,6 +128,14 @@ final class UsageViewModel: ObservableObject {
         }
     }
 
+    func handleSignOut() {
+        usage = nil
+        lastUpdated = nil
+        error = nil
+        lastServiceError = nil
+        refresh()
+    }
+
     func startInAppOAuthLogin() {
         let session = UsageService.createOAuthAuthorizationSession()
         oauthAuthorizationSession = session

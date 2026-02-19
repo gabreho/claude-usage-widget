@@ -100,12 +100,21 @@ public struct UsageService {
 
     // MARK: - Sign Out
 
+    private static let ignoreExternalSessionKey = "ignoreExternalOAuthSession"
+
     public static var hasInAppCredentials: Bool {
         KeychainService.readKeychainData(forAccount: KeychainService.inAppOAuthAccount) != nil
     }
 
+    public static var isAuthenticated: Bool {
+        if hasInAppCredentials { return true }
+        if UserDefaults.standard.bool(forKey: ignoreExternalSessionKey) { return false }
+        return (try? KeychainService.readKeychainData()) != nil
+    }
+
     public static func signOut() {
         KeychainService.deleteInAppCredentials()
+        UserDefaults.standard.set(true, forKey: ignoreExternalSessionKey)
     }
 
     // MARK: - OAuth Authorization
@@ -160,6 +169,7 @@ public struct UsageService {
         rootJSON["claudeAiOauth"] = oauthJSON
 
         try KeychainService.writeUpdatedCredentials(rootJSON, account: currentCredentials.account)
+        UserDefaults.standard.removeObject(forKey: ignoreExternalSessionKey)
     }
 
     // MARK: - Usage Fetching
@@ -216,9 +226,11 @@ public struct UsageService {
         if let inApp = KeychainService.readKeychainData(forAccount: KeychainService.inAppOAuthAccount) {
             (data, account) = inApp
             isOwnedByApp = true
-        } else {
+        } else if !UserDefaults.standard.bool(forKey: ignoreExternalSessionKey) {
             (data, account) = try KeychainService.readKeychainData()
             isOwnedByApp = false
+        } else {
+            throw UsageServiceError.keychainNotFound
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

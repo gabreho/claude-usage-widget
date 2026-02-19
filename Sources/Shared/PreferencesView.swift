@@ -5,7 +5,7 @@ struct PreferencesView: View {
     var menuBarShowsBoth: Binding<Bool>?
     var onSignOut: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
-    @State private var hasInAppCredentials = UsageService.hasInAppCredentials
+    @State private var isAuthenticated = UsageService.isAuthenticated
 
     var body: some View {
 #if os(macOS)
@@ -43,7 +43,7 @@ struct PreferencesView: View {
             }
         }
 
-        if hasInAppCredentials {
+        if isAuthenticated {
             Section("Account") {
                 Button("Sign Out", role: .destructive) {
                     UsageService.signOut()

@@ -37,7 +37,7 @@ struct ClaudeUsageiOSHomeView: View {
             }
         }
         .sheet(isPresented: $isShowingPreferences) {
-            PreferencesView(onSignOut: { viewModel.refresh() })
+            PreferencesView(onSignOut: { viewModel.handleSignOut() })
         }
         .fullScreenCover(isPresented: $viewModel.isShowingOAuthLogin) {
             if let authorizationURL = viewModel.oauthAuthorizationURL {
@@ -108,6 +108,14 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
             }
             self.isLoading = false
         }
+    }
+
+    func handleSignOut() {
+        usage = nil
+        lastUpdated = nil
+        error = nil
+        lastServiceError = nil
+        refresh()
     }
 
     func startInAppOAuthLogin() {

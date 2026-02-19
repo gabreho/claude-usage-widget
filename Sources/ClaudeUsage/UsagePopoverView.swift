@@ -20,7 +20,10 @@ struct UsagePopoverView: View {
                     lastUpdated: viewModel.lastUpdated,
                     onLogin: { viewModel.startInAppOAuthLogin() },
                     headerAccessory: {
-                        Button(action: { openSettings() }) {
+                        Button(action: {
+                            openSettings()
+                            NSApp.activate(ignoringOtherApps: true)
+                        }) {
                             Image(systemName: "gearshape")
                         }
                         .buttonStyle(.borderless)
