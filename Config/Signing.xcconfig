@@ -1,0 +1,2 @@
+// Shared signing config. Local overrides are optional and gitignored.
+#include? "Signing.local.xcconfig"

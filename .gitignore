@@ -8,3 +8,4 @@ DerivedData/
 .claude/
 .perles/
 AGENTS.md
+Config/Signing.local.xcconfig
