@@ -1,0 +1,92 @@
+name: Build and Release ClaudeUsage
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Apple Certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          security create-keychain -p "" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "" $KEYCHAIN_PATH
+          security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "" $KEYCHAIN_PATH
+          security default-keychain -d user -s $KEYCHAIN_PATH
+          security list-keychains -d user -s $KEYCHAIN_PATH
+
+      - name: Install Provisioning Profiles
+        env:
+          PROVISION_PROFILE_APP: ${{ secrets.PROVISION_PROFILE_APP }}
+          PROVISION_PROFILE_WIDGET: ${{ secrets.PROVISION_PROFILE_WIDGET }}
+        run: |
+          # Create the directory where Xcode looks for profiles
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          
+          # We name the files using their UUIDs to ensure Xcode finds them.
+          # I'll explain how to get the UUID below!
+          echo -n "$PROVISION_PROFILE_APP" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/app.provisionprofile
+          echo -n "$PROVISION_PROFILE_WIDGET" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/widget.provisionprofile
+          
+          # Optional: Automatically rename them to their actual UUIDs
+          cd ~/Library/MobileDevice/Provisioning\ Profiles
+          for f in *.provisionprofile; do
+            UUID=$(grep UUID -A1 -a "$f" | grep -io "[-A-F0-9]\{36\}")
+            mv "$f" "$UUID.provisionprofile"
+          done
+
+      - name: Archive and Export
+        run: |
+          # 1. Archive with manual signing defined in Release build settings.
+          xcodebuild archive \
+            -project ClaudeUsage.xcodeproj \
+            -scheme ClaudeUsage \
+            -configuration Release \
+            -archivePath ./build/ClaudeUsage.xcarchive
+
+          # 2. Export using Developer ID distribution options.
+          xcodebuild -exportArchive \
+            -archivePath ./build/ClaudeUsage.xcarchive \
+            -exportPath ./build/exported \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Notarize and Staple
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        run: |
+          codesign --verify --deep --strict --verbose=2 build/exported/ClaudeUsage.app
+          ditto -c -k --sequesterRsrc --keepParent build/exported/ClaudeUsage.app ClaudeUsage-to-notarize.zip
+          NOTARY_RESULT_JSON=$RUNNER_TEMP/notary-result.json
+          xcrun notarytool submit ClaudeUsage-to-notarize.zip --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "XP7J6JK92Z" --wait --output-format json > "$NOTARY_RESULT_JSON"
+          NOTARY_STATUS=$(plutil -extract status raw -o - "$NOTARY_RESULT_JSON")
+          if [ "$NOTARY_STATUS" != "Accepted" ]; then
+            NOTARY_ID=$(plutil -extract id raw -o - "$NOTARY_RESULT_JSON")
+            echo "Notarization failed with status: $NOTARY_STATUS (id: $NOTARY_ID)"
+            xcrun notarytool log "$NOTARY_ID" --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "XP7J6JK92Z" || true
+            exit 1
+          fi
+          xcrun stapler staple build/exported/ClaudeUsage.app
+
+      - name: Final Zip for Users
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent build/exported/ClaudeUsage.app ClaudeUsage-Mac.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ClaudeUsage-Mac.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
