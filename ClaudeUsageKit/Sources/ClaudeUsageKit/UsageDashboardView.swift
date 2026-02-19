@@ -409,9 +409,9 @@ private struct ExtraUsageSectionView: View {
                 if let usedCredits = extra.effectiveUsedCredits {
                     Group {
                         if let monthlyLimit = extra.effectiveMonthlyLimit {
-                            Text("\(credits(usedCredits)) / \(credits(monthlyLimit))")
+                            Text("\(usd(usedCredits)) / \(usd(monthlyLimit))")
                         } else {
-                            Text(credits(usedCredits))
+                            Text(usd(usedCredits))
                         }
                     }
                     .font(wrapInCard ? .headline.monospacedDigit() : .subheadline.monospacedDigit())
@@ -433,7 +433,7 @@ private struct ExtraUsageSectionView: View {
             }
 
             if let remaining = extra.remainingCredits {
-                Text("\(credits(remaining)) credits remaining")
+                Text("\(usd(remaining)) remaining")
                     .font(wrapInCard ? .caption : .caption2)
                     .foregroundStyle(.secondary)
             }
@@ -459,11 +459,9 @@ private struct ExtraUsageSectionView: View {
         }
     }
 
-    private func credits(_ amount: Double) -> String {
-        if amount.rounded() == amount {
-            return String(format: "%.0f", amount)
-        }
-        return String(format: "%.1f", amount)
+    // The API returns extra usage values in cent-like units (e.g. 1103 => $11.03).
+    private func usd(_ amount: Double) -> String {
+        String(format: "$%.2f", amount / 100)
     }
 
     private func percent(_ value: Double) -> String {
