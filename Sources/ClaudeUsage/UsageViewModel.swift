@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import ClaudeUsageKit
+import WidgetKit
 
 @MainActor
 final class UsageViewModel: ObservableObject {
@@ -117,6 +118,8 @@ final class UsageViewModel: ObservableObject {
                 let result = try await UsageService.fetchUsage()
                 self.usage = result
                 self.lastUpdated = Date()
+                UsageWidgetSharedStore.save(usage: result, fetchedAt: Date())
+                WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
                 self.error = nil
                 self.lastServiceError = nil
                 self.scheduleResetRefresh()
@@ -133,6 +136,8 @@ final class UsageViewModel: ObservableObject {
         lastUpdated = nil
         error = nil
         lastServiceError = nil
+        UsageWidgetSharedStore.clear()
+        WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
         refresh()
     }
 

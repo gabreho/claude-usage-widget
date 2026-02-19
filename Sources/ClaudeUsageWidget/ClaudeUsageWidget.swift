@@ -69,14 +69,25 @@ private struct ClaudeUsageWidgetEntryView: View {
         .padding()
         .containerBackground(for: .widget) {
             LinearGradient(
-                colors: [
-                    Color(uiColor: .secondarySystemBackground),
-                    Color(uiColor: .systemBackground)
-                ],
+                colors: gradientColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         }
+    }
+
+    private var gradientColors: [Color] {
+        #if os(iOS)
+        [
+            Color(uiColor: .secondarySystemBackground),
+            Color(uiColor: .systemBackground)
+        ]
+        #elseif os(macOS)
+        [
+            Color(nsColor: .windowBackgroundColor),
+            Color(nsColor: .controlBackgroundColor)
+        ]
+        #endif
     }
 
     private var dashboardStyle: UsageDashboardStyle {
