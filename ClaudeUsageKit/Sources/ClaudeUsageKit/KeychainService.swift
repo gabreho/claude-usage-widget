@@ -5,11 +5,16 @@ struct KeychainService {
     static let keychainService = "claude-usage-credentials"
     static let inAppOAuthAccount = "claude-usage-in-app-oauth"
 
+    // Use the data protection keychain (macOS 10.15+) to avoid ACL-based access prompts.
+    // Items are scoped to the app's implicit access group (TeamID.BundleID) with no user dialogs.
+    private static let dataProtectionKeychain: Bool = true
+
     static func readInAppCredentials() -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: inAppOAuthAccount,
+            kSecUseDataProtectionKeychain as String: dataProtectionKeychain,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -31,7 +36,8 @@ struct KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: account,
+            kSecUseDataProtectionKeychain as String: dataProtectionKeychain
         ]
 
         let attributesToUpdate: [String: Any] = [
@@ -66,7 +72,8 @@ struct KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: inAppOAuthAccount
+            kSecAttrAccount as String: inAppOAuthAccount,
+            kSecUseDataProtectionKeychain as String: dataProtectionKeychain
         ]
         SecItemDelete(query as CFDictionary)
     }
