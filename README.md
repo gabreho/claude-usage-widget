@@ -27,7 +27,6 @@ A lightweight Apple ecosystem app that shows your Claude API usage limits in rea
 ```bash
 git clone https://github.com/gabreho/claude-usage.git
 cd claude-usage
-cp Config/Signing.local.example.xcconfig Config/Signing.local.xcconfig
 open ClaudeUsage.xcodeproj
 ```
 
@@ -36,8 +35,6 @@ In Xcode:
 1. Select a scheme: **ClaudeUsage** (macOS) or **ClaudeUsageiOS** (iOS)
 2. Choose a destination: **My Mac** or an iOS Simulator
 3. Press **Run** (Cmd+R)
-
-Before first run, edit `Config/Signing.local.xcconfig` and set `DEVELOPMENT_TEAM` to your Apple Developer Team ID. Automatic signing is enabled.
 
 ## Authentication
 
@@ -79,7 +76,6 @@ The app stores credentials in its own Keychain entry (`claude-usage-credentials`
 - **OAuth Client ID**: The app currently uses Claude Code's public OAuth client ID because Anthropic doesn't yet offer third-party client registration. This may change in the future.
 - **No automated tests**: The project doesn't include unit or integration tests yet. Contributions welcome.
 - **iOS widget refresh**: iOS limits widget updates to roughly every 15 minutes — this is an OS-level constraint, not an app limitation.
-- **Code signing**: Set your team ID in `Config/Signing.local.xcconfig` (gitignored).
 - **Per-device authentication**: Each device authenticates independently. There's no iCloud Keychain sync between devices.
 
 ## Building from the Command Line

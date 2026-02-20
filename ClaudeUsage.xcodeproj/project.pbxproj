@@ -81,8 +81,6 @@
 		B1C2D3E4F506789000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C3D4E5F60789012345000001 /* OAuthLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthLoginView.swift; sourceTree = "<group>"; };
 		D4E5F6070890123456000001 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
-		E1F2A3B4C5D6078900000002 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
-		E1F2A3B4C5D6078900000003 /* Signing.local.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.local.example.xcconfig; sourceTree = "<group>"; };
 		E2F3A4B5C6D700980000AA01 /* ClaudeUsageMacWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ClaudeUsageMacWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2F3A4B5C6D700980000AA02 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2F3A4B5C6D700980000AA03 /* ClaudeUsageMacWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ClaudeUsageMacWidget.entitlements; sourceTree = "<group>"; };
@@ -136,8 +134,7 @@
 				B1C2D3E4F50678900000000A /* ClaudeUsageiOS */,
 				B1C2D3E4F50678900000000B /* ClaudeUsageWidget */,
 				E2F3A4B5C6D700980000AE01 /* ClaudeUsageMacWidget */,
-				E1F2A3B4C5D6078900000001 /* Config */,
-				A1B2C3D4E5F6078900000003 /* Products */,
+					A1B2C3D4E5F6078900000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -215,15 +212,6 @@
 			);
 			name = "Sources Shared";
 			path = Sources/Shared;
-			sourceTree = "<group>";
-		};
-		E1F2A3B4C5D6078900000001 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				E1F2A3B4C5D6078900000002 /* Signing.xcconfig */,
-				E1F2A3B4C5D6078900000003 /* Signing.local.example.xcconfig */,
-			);
-			path = Config;
 			sourceTree = "<group>";
 		};
 		E2F3A4B5C6D700980000AE01 /* ClaudeUsageMacWidget */ = {
@@ -541,7 +529,6 @@
 		};
 		A1B2C3D4E5F607890000000B /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				AUTOMATION_APPLE_EVENTS = NO;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -583,7 +570,6 @@
 		};
 		A1B2C3D4E5F607890000000C /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				AUTOMATION_APPLE_EVENTS = NO;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -626,7 +612,6 @@
 		};
 		B1C2D3E4F506789000000017 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = ClaudeUsageiOS/ClaudeUsageiOS.entitlements;
@@ -655,7 +640,6 @@
 		};
 		B1C2D3E4F506789000000018 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_ENTITLEMENTS = ClaudeUsageiOS/ClaudeUsageiOS.entitlements;
@@ -683,7 +667,6 @@
 		};
 		B1C2D3E4F506789000000019 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -713,7 +696,6 @@
 		};
 		B1C2D3E4F50678900000001A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -742,7 +724,6 @@
 		};
 		E2F3A4B5C6D700980000AD02 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -771,7 +752,6 @@
 		};
 		E2F3A4B5C6D700980000AD03 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E1F2A3B4C5D6078900000002 /* Signing.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
