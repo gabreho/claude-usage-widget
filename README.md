@@ -14,7 +14,7 @@ A lightweight Apple ecosystem app that shows your Claude API usage limits in rea
 - Auto-refreshes every 5 minutes, plus manual refresh
 - **macOS**: menu bar extra with gauge icon and percentage, plus a WidgetKit desktop widget
 - **iOS**: full app + WidgetKit home screen widget (small and medium sizes)
-- In-app OAuth login (PKCE) or automatic credential borrowing from Claude Code CLI
+- In-app OAuth login (PKCE) — independent of any Claude Code installation
 
 ## Requirements
 
@@ -41,21 +41,7 @@ Before first run, edit `Config/Signing.local.xcconfig` and set `DEVELOPMENT_TEAM
 
 ## Authentication
 
-The app needs an OAuth access token to call `https://api.anthropic.com/api/oauth/usage`. There are two ways to authenticate:
-
-### Option 1: Claude Code CLI (macOS only)
-
-If you already use [Claude Code](https://docs.anthropic.com/en/docs/claude-code), the app will automatically read your credentials from the macOS Keychain. No extra setup needed — just make sure you're logged in:
-
-```bash
-claude auth login
-```
-
-The app reads these credentials but **never modifies or refreshes them**, so your CLI session stays intact.
-
-### Option 2: In-app OAuth Login
-
-If you don't have Claude Code installed, or you're on iOS, the app will show a login button. Tapping it opens an in-app browser where you sign in with your Claude account. The app handles the full OAuth PKCE flow and stores its own credentials separately in the Keychain.
+The app needs an OAuth access token to call `https://api.anthropic.com/api/oauth/usage`. On first launch it shows a sign-in button. Tapping it opens an in-app browser where you sign in with your Claude account. The app handles the full OAuth PKCE flow and stores credentials in its own Keychain entry — completely independent of any Claude Code installation.
 
 ## Project Structure
 
@@ -86,11 +72,7 @@ claude-usage/
 
 The app calls Anthropic's OAuth usage endpoint with a bearer token and displays the returned utilization percentages. On macOS, a `MenuBarExtra` scene renders a gauge icon and label in the system menu bar, and a WidgetKit extension surfaces the same usage data on the desktop. On iOS, the same data feeds both the main app and a WidgetKit timeline.
 
-Credential management is deliberately conservative:
-
-- Tokens obtained through in-app OAuth are stored in a **separate** Keychain entry from Claude Code's
-- Borrowed CLI tokens are read-only — the app never refreshes or overwrites them
-- Token refresh only runs for credentials the app itself created
+The app stores credentials in its own Keychain entry (`claude-usage-credentials`) and automatically refreshes tokens before they expire. It never reads from or writes to Claude Code's Keychain entries.
 
 ## Warnings and Notes
 
