@@ -2,7 +2,6 @@ import Foundation
 
 public enum UsageServiceError: LocalizedError {
     case keychainNotFound
-    case keychainAccountMissing
     case tokenMissing
     case refreshTokenMissing
     case tokenExpiryMissing
@@ -16,9 +15,7 @@ public enum UsageServiceError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .keychainNotFound:
-            return "Claude Code credentials not found in Keychain"
-        case .keychainAccountMissing:
-            return "Keychain credential is missing account metadata"
+            return "Sign in to view your usage"
         case .tokenMissing:
             return "OAuth access token missing from credentials"
         case .refreshTokenMissing:
@@ -36,7 +33,7 @@ public enum UsageServiceError: LocalizedError {
         case .httpError(let statusCode, let message):
             switch statusCode {
             case 401:
-                return "Token expired — sign in again (or run `claude auth login`)"
+                return "Session expired — sign in again"
             case 403:
                 return message ?? "Access denied (HTTP 403)"
             default:
@@ -50,7 +47,6 @@ public enum UsageServiceError: LocalizedError {
     public var supportsInAppLoginRecovery: Bool {
         switch self {
         case .keychainNotFound,
-             .keychainAccountMissing,
              .tokenMissing,
              .refreshTokenMissing,
              .tokenExpiryMissing,
@@ -100,21 +96,12 @@ public struct UsageService {
 
     // MARK: - Sign Out
 
-    private static let ignoreExternalSessionKey = "ignoreExternalOAuthSession"
-
-    public static var hasInAppCredentials: Bool {
-        KeychainService.readKeychainData(forAccount: KeychainService.inAppOAuthAccount) != nil
-    }
-
     public static var isAuthenticated: Bool {
-        if hasInAppCredentials { return true }
-        if UserDefaults.standard.bool(forKey: ignoreExternalSessionKey) { return false }
-        return (try? KeychainService.readKeychainData()) != nil
+        KeychainService.readInAppCredentials() != nil
     }
 
     public static func signOut() {
         KeychainService.deleteInAppCredentials()
-        UserDefaults.standard.set(true, forKey: ignoreExternalSessionKey)
     }
 
     // MARK: - OAuth Authorization
@@ -159,8 +146,7 @@ public struct UsageService {
             codeVerifier: codeVerifier
         )
 
-        let currentCredentials = KeychainService.currentCredentialsRootJSONForWrite()
-        var rootJSON = currentCredentials.rootJSON
+        var rootJSON = KeychainService.currentCredentialsRootJSONForWrite()
 
         var oauthJSON = (rootJSON["claudeAiOauth"] as? [String: Any]) ?? [:]
         oauthJSON["accessToken"] = exchanged.accessToken
@@ -168,8 +154,7 @@ public struct UsageService {
         oauthJSON["expiresAt"] = exchanged.expiresAtStorageValue
         rootJSON["claudeAiOauth"] = oauthJSON
 
-        try KeychainService.writeUpdatedCredentials(rootJSON, account: currentCredentials.account)
-        UserDefaults.standard.removeObject(forKey: ignoreExternalSessionKey)
+        try KeychainService.writeUpdatedCredentials(rootJSON, account: KeychainService.inAppOAuthAccount)
     }
 
     // MARK: - Usage Fetching
@@ -178,9 +163,7 @@ public struct UsageService {
         let stored = try readStoredCredentials()
         let credentials = try await refreshCredentialsIfNeeded(
             rootJSON: stored.rootJSON,
-            credentials: stored.credentials,
-            account: stored.account,
-            isOwnedByApp: stored.isOwnedByApp
+            credentials: stored.credentials
         )
 
         var request = URLRequest(url: apiURL)
@@ -218,18 +201,8 @@ public struct UsageService {
 
     // MARK: - Credential Management
 
-    private static func readStoredCredentials() throws -> (rootJSON: [String: Any], credentials: OAuthCredentials, account: String, isOwnedByApp: Bool) {
-        // Prefer in-app OAuth credentials; fall back to Claude Code's entry (read-only).
-        let data: Data
-        let account: String
-        let isOwnedByApp: Bool
-        if let inApp = KeychainService.readKeychainData(forAccount: KeychainService.inAppOAuthAccount) {
-            (data, account) = inApp
-            isOwnedByApp = true
-        } else if !UserDefaults.standard.bool(forKey: ignoreExternalSessionKey) {
-            (data, account) = try KeychainService.readKeychainData()
-            isOwnedByApp = false
-        } else {
+    private static func readStoredCredentials() throws -> (rootJSON: [String: Any], credentials: OAuthCredentials) {
+        guard let data = KeychainService.readInAppCredentials() else {
             throw UsageServiceError.keychainNotFound
         }
 
@@ -260,26 +233,15 @@ public struct UsageService {
                 accessToken: accessToken,
                 refreshToken: refreshToken,
                 expiresAt: expiresAt
-            ),
-            account,
-            isOwnedByApp
+            )
         )
     }
 
     private static func refreshCredentialsIfNeeded(
         rootJSON: [String: Any],
-        credentials: OAuthCredentials,
-        account: String,
-        isOwnedByApp: Bool
+        credentials: OAuthCredentials
     ) async throws -> OAuthCredentials {
         guard credentials.expiresAt.timeIntervalSinceNow <= refreshSkewSeconds else {
-            return credentials
-        }
-
-        // Never refresh tokens we don't own — rotating Claude Code's refresh token
-        // would invalidate their session. Use the access token as-is; if it's expired
-        // the API will return 401 and the user can do an in-app login.
-        guard isOwnedByApp else {
             return credentials
         }
 
@@ -292,7 +254,7 @@ public struct UsageService {
         oauthJSON["expiresAt"] = refreshed.expiresAtStorageValue
         updatedRootJSON["claudeAiOauth"] = oauthJSON
 
-        try KeychainService.writeUpdatedCredentials(updatedRootJSON, account: account)
+        try KeychainService.writeUpdatedCredentials(updatedRootJSON, account: KeychainService.inAppOAuthAccount)
 
         return OAuthCredentials(
             accessToken: refreshed.accessToken,

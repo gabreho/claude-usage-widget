@@ -2,16 +2,15 @@ import Foundation
 import Security
 
 struct KeychainService {
-    static let keychainService = "Claude Code-credentials"
+    static let keychainService = "claude-usage-credentials"
     static let inAppOAuthAccount = "claude-usage-in-app-oauth"
 
-    static func readKeychainData(forAccount account: String) -> (data: Data, account: String)? {
+    static func readInAppCredentials() -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: inAppOAuthAccount,
             kSecReturnData as String: true,
-            kSecReturnAttributes as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
@@ -19,35 +18,10 @@ struct KeychainService {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess,
-              let item = result as? [String: Any],
-              let data = item[kSecValueData as String] as? Data else {
+              let data = result as? Data else {
             return nil
         }
-        return (data, account)
-    }
-
-    static func readKeychainData() throws -> (data: Data, account: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecReturnData as String: true,
-            kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let item = result as? [String: Any],
-              let data = item[kSecValueData as String] as? Data else {
-            throw UsageServiceError.keychainNotFound
-        }
-
-        guard let account = item[kSecAttrAccount as String] as? String, !account.isEmpty else {
-            throw UsageServiceError.keychainAccountMissing
-        }
-        return (data, account)
+        return data
     }
 
     static func writeCredentialsData(
@@ -97,12 +71,10 @@ struct KeychainService {
         SecItemDelete(query as CFDictionary)
     }
 
-    static func currentCredentialsRootJSONForWrite() -> (rootJSON: [String: Any], account: String) {
-        // Always target the in-app account to avoid overwriting Claude Code's credentials.
-        guard let existing = readKeychainData(forAccount: inAppOAuthAccount) else {
-            return ([:], inAppOAuthAccount)
+    static func currentCredentialsRootJSONForWrite() -> [String: Any] {
+        guard let data = readInAppCredentials() else {
+            return [:]
         }
-        let rootJSON = (try? JSONSerialization.jsonObject(with: existing.data) as? [String: Any]) ?? [:]
-        return (rootJSON, inAppOAuthAccount)
+        return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 }
