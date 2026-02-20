@@ -1,10 +1,10 @@
 # Claude Usage
 
-A lightweight Apple ecosystem app that shows your Claude API usage limits in real time. Runs as a menu bar app on macOS and as a full app with home screen widgets on iOS.
+A lightweight Apple ecosystem app that shows your Claude API usage limits in real time. Runs as a menu bar app on macOS, includes a macOS widget, and ships as a full app with home screen widgets on iOS.
 
-| macOS | iOS |
-|-------|-----|
-| ![macOS popover](assets/macos.png) | <img src="assets/ios.png" width="280"> |
+| macOS Menu Bar | macOS & iOS Widget |
+|----------------|--------------|
+| ![macOS popover](assets/macos.png) | ![macOS/iOS Widget](assets/macos-widget.png) |
 
 ## Features
 
@@ -12,7 +12,7 @@ A lightweight Apple ecosystem app that shows your Claude API usage limits in rea
 - Optional per-model breakdowns (Opus / Sonnet) when available
 - Color-coded tiers for quick scanning: green (< 50%), yellow (50-79%), red (>= 80%)
 - Auto-refreshes every 5 minutes, plus manual refresh
-- **macOS**: menu bar extra with gauge icon and percentage — no Dock icon
+- **macOS**: menu bar extra with gauge icon and percentage, plus a WidgetKit desktop widget
 - **iOS**: full app + WidgetKit home screen widget (small and medium sizes)
 - In-app OAuth login (PKCE) or automatic credential borrowing from Claude Code CLI
 
@@ -72,10 +72,11 @@ claude-usage/
 │       ├── UsageDashboardView.swift   # Main dashboard UI
 │       ├── UsageMetricsView.swift     # Usage metric rows
 │       └── UsageWidgetSharedStore.swift # Widget data sharing
+├── ClaudeUsageMacWidget/              # macOS widget extension config files
 ├── Sources/
 │   ├── ClaudeUsage/                   # macOS menu bar app
 │   ├── ClaudeUsageiOS/                # iOS app
-│   ├── ClaudeUsageWidget/             # iOS widget extension
+│   ├── ClaudeUsageWidget/             # Shared WidgetKit implementation (iOS + macOS)
 │   └── Shared/                        # Cross-platform views
 └── docs/
     └── ios-token-strategy.md          # iOS auth decision record
@@ -83,7 +84,7 @@ claude-usage/
 
 ## How It Works
 
-The app calls Anthropic's OAuth usage endpoint with a bearer token and displays the returned utilization percentages. On macOS, a `MenuBarExtra` scene renders a gauge icon and label in the system menu bar. On iOS, the same data feeds both the main app and a WidgetKit timeline.
+The app calls Anthropic's OAuth usage endpoint with a bearer token and displays the returned utilization percentages. On macOS, a `MenuBarExtra` scene renders a gauge icon and label in the system menu bar, and a WidgetKit extension surfaces the same usage data on the desktop. On iOS, the same data feeds both the main app and a WidgetKit timeline.
 
 Credential management is deliberately conservative:
 
