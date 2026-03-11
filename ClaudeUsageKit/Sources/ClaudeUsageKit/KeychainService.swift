@@ -41,7 +41,8 @@ struct KeychainService {
         ]
 
         let attributesToUpdate: [String: Any] = [
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         let status = SecItemUpdate(query as CFDictionary, attributesToUpdate as CFDictionary)
@@ -51,6 +52,7 @@ struct KeychainService {
         case errSecItemNotFound:
             var itemToAdd = query
             itemToAdd[kSecValueData as String] = data
+            itemToAdd[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             let addStatus = SecItemAdd(itemToAdd as CFDictionary, nil)
             guard addStatus == errSecSuccess else {
                 throw UsageServiceError.keychainWriteFailed(status: addStatus)
