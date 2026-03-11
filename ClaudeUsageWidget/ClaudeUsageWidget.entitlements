@@ -6,5 +6,9 @@
 	<array>
 		<string>group.com.gabreho.claude-usage</string>
 	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.gabreho.ClaudeUsage</string>
+	</array>
 </dict>
 </plist>
