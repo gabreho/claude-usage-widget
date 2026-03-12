@@ -124,3 +124,28 @@ public enum UsageTier: Sendable {
     case yellow
     case red
 }
+
+extension UsageLimit {
+    /// Returns the fraction of the window's time that has elapsed (0.0–1.0).
+    /// Returns nil if the reset date is unavailable or already past (window expired).
+    public func timeElapsedFraction(windowDuration: TimeInterval, now: Date = Date()) -> Double? {
+        guard let resetDate, resetDate > now else { return nil }
+        let timeRemaining = resetDate.timeIntervalSince(now)
+        let timeElapsed = windowDuration - timeRemaining
+        guard timeElapsed >= 0 else { return nil }
+        return min(timeElapsed / windowDuration, 1.0)
+    }
+
+    /// Difference between actual utilization % and the expected linear-pace utilization %.
+    /// Positive → spending faster than pace (risk of hitting limit before reset).
+    /// Negative → spending slower than pace (will likely have balance left at reset).
+    public func paceDelta(windowDuration: TimeInterval, now: Date = Date()) -> Double? {
+        guard let elapsed = timeElapsedFraction(windowDuration: windowDuration, now: now) else { return nil }
+        return utilization - elapsed * 100
+    }
+}
+
+extension UsageResponse {
+    public static let fiveHourDuration: TimeInterval = 5 * 60 * 60
+    public static let sevenDayDuration: TimeInterval = 7 * 24 * 60 * 60
+}
