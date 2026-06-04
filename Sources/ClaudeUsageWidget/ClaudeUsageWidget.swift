@@ -30,10 +30,15 @@ private struct ClaudeUsageProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<ClaudeUsageEntry>) -> Void) {
         Task {
             let now = Date()
-            let snapshot: UsageWidgetSharedStore.Snapshot?
 
-            if let usage = try? await UsageService.fetchUsage() {
-                let fetched = UsageWidgetSharedStore.Snapshot(usage: usage, fetchedAt: now)
+            async let claudeResult = UsageService.fetchUsage(provider: .claude)
+            async let codexResult = UsageService.fetchUsage(provider: .codex)
+            let claudeUsage = try? await claudeResult
+            let codexUsage = try? await codexResult
+
+            let snapshot: UsageWidgetSharedStore.Snapshot?
+            if claudeUsage != nil || codexUsage != nil {
+                let fetched = UsageWidgetSharedStore.Snapshot(usage: claudeUsage, codexUsage: codexUsage, fetchedAt: now)
                 UsageWidgetSharedStore.save(fetched)
                 snapshot = fetched
             } else {
@@ -52,17 +57,32 @@ private struct ClaudeUsageWidgetEntryView: View {
 
     let entry: ClaudeUsageEntry
 
-    private var usage: UsageResponse? {
-        entry.snapshot?.usage
+    /// Provider sections for the widget. The small family shows a single provider (Claude preferred)
+    /// for space; the medium family stacks every signed-in provider.
+    private var sections: [ProviderUsageSection] {
+        let claude = entry.snapshot?.usage
+        let codex = entry.snapshot?.codexUsage
+
+        var result: [ProviderUsageSection] = []
+        if let claude {
+            result.append(ProviderUsageSection(provider: .claude, usage: claude))
+        }
+        if let codex {
+            result.append(ProviderUsageSection(provider: .codex, usage: codex))
+        }
+
+        if family != .systemMedium {
+            return Array(result.prefix(1))
+        }
+        return result
     }
 
     var body: some View {
         UsageDashboardView(
             style: dashboardStyle,
-            usage: usage,
-            errorMessage: nil,
+            title: sections.count > 1 ? "Usage" : (sections.first?.provider.displayName ?? "Usage"),
+            sections: sections,
             isLoading: false,
-            shouldOfferInAppLogin: false,
             lastUpdated: entry.snapshot?.fetchedAt,
             unavailableMessage: unavailableMessage
         )

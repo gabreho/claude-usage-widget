@@ -11,13 +11,11 @@ struct ClaudeUsageiOSHomeView: View {
             ScrollView {
                 UsageDashboardView(
                     style: .iosHome,
-                    usage: viewModel.usage,
-                    errorMessage: viewModel.error,
+                    title: "Usage",
+                    sections: viewModel.sections,
                     isLoading: viewModel.isLoading,
-                    shouldOfferInAppLogin: viewModel.shouldOfferInAppLogin,
                     lastUpdated: viewModel.lastUpdated,
-                    unavailableMessage: "No usage data yet. Pull to refresh or try again in a moment.",
-                    onLogin: { viewModel.startInAppOAuthLogin() }
+                    unavailableMessage: "No usage data yet. Pull to refresh or try again in a moment."
                 )
                 .padding()
             }
@@ -37,11 +35,13 @@ struct ClaudeUsageiOSHomeView: View {
             }
         }
         .sheet(isPresented: $isShowingPreferences) {
-            PreferencesView(onSignOut: { viewModel.handleSignOut() })
+            PreferencesView(onSignOut: { provider in viewModel.handleSignOut(provider: provider) })
         }
         .fullScreenCover(isPresented: $viewModel.isShowingOAuthLogin) {
-            if let authorizationURL = viewModel.oauthAuthorizationURL {
+            if let provider = viewModel.loginProvider,
+               let authorizationURL = viewModel.oauthAuthorizationURL {
                 OAuthLoginView(
+                    provider: provider,
                     authorizationURL: authorizationURL,
                     isCompletingLogin: viewModel.isCompletingOAuthLogin,
                     onCancel: { viewModel.cancelInAppOAuthLogin() },
@@ -59,20 +59,24 @@ struct ClaudeUsageiOSHomeView: View {
 
 @MainActor
 private final class ClaudeUsageiOSViewModel: ObservableObject {
-    @Published var usage: UsageResponse?
-    @Published var error: String?
+    @Published var claudeUsage: UsageResponse?
+    @Published var codexUsage: UsageResponse?
+    @Published var claudeError: String?
+    @Published var codexError: String?
     @Published var isLoading = false
     @Published var isCompletingOAuthLogin = false
     @Published var lastUpdated: Date?
     @Published var oauthAuthorizationURL: URL?
     @Published var isShowingOAuthLogin = false
+    @Published var loginProvider: UsageProvider?
 
     private let refreshInterval: TimeInterval = 300
     private var refreshTimer: Timer?
     private var resetTimer: Timer?
     private var startedAutoRefresh = false
-    private var lastServiceError: UsageServiceError?
-    private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
+    private var claudeServiceError: UsageServiceError?
+    private var codexServiceError: UsageServiceError?
+    private var oauthSession: UsageService.OAuthAuthorizationSession?
 
     init() {
         // Avoid network/keychain side effects during SwiftUI canvas previews.
@@ -82,106 +86,170 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
         startAutoRefreshIfNeeded()
     }
 
-    var shouldOfferInAppLogin: Bool {
-        lastServiceError?.supportsInAppLoginRecovery == true
+    var sections: [ProviderUsageSection] {
+        [
+            ProviderUsageSection(
+                provider: .claude,
+                usage: claudeUsage,
+                errorMessage: claudeError,
+                shouldOfferInAppLogin: claudeServiceError?.supportsInAppLoginRecovery == true,
+                onLogin: { [weak self] in self?.startInAppOAuthLogin(provider: .claude) }
+            ),
+            ProviderUsageSection(
+                provider: .codex,
+                usage: codexUsage,
+                errorMessage: codexError,
+                shouldOfferInAppLogin: codexServiceError?.supportsInAppLoginRecovery == true,
+                onLogin: { [weak self] in self?.startInAppOAuthLogin(provider: .codex) }
+            )
+        ]
     }
 
     func refresh() {
         guard !isLoading, !isCompletingOAuthLogin else { return }
         isLoading = true
-        error = nil
 
         Task {
-            do {
-                let result = try await UsageService.fetchUsage()
-                let refreshedAt = Date()
-                self.usage = result
-                self.lastUpdated = refreshedAt
-                UsageWidgetSharedStore.save(usage: result, fetchedAt: refreshedAt)
+            async let claude: Void = fetch(.claude)
+            async let codex: Void = fetch(.codex)
+            _ = await (claude, codex)
+
+            let refreshedAt = Date()
+            self.lastUpdated = refreshedAt
+            if self.claudeUsage != nil || self.codexUsage != nil {
+                UsageWidgetSharedStore.save(
+                    usage: self.claudeUsage,
+                    codexUsage: self.codexUsage,
+                    fetchedAt: refreshedAt
+                )
                 WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
-                self.error = nil
-                self.lastServiceError = nil
-                self.scheduleResetRefresh()
-            } catch {
-                self.lastServiceError = error as? UsageServiceError
-                self.error = error.localizedDescription
             }
+            self.scheduleResetRefresh()
             self.isLoading = false
         }
     }
 
-    func handleSignOut() {
-        usage = nil
-        lastUpdated = nil
-        error = nil
-        lastServiceError = nil
+    private func fetch(_ provider: UsageProvider) async {
+        do {
+            let result = try await UsageService.fetchUsage(provider: provider)
+            apply(usage: result, error: nil, serviceError: nil, for: provider)
+        } catch {
+            apply(usage: nil, error: error.localizedDescription, serviceError: error as? UsageServiceError, for: provider)
+        }
+    }
+
+    private func apply(usage: UsageResponse?, error: String?, serviceError: UsageServiceError?, for provider: UsageProvider) {
+        switch provider {
+        case .claude:
+            if let usage { claudeUsage = usage }
+            claudeError = error
+            claudeServiceError = serviceError
+        case .codex:
+            if let usage { codexUsage = usage }
+            codexError = error
+            codexServiceError = serviceError
+        }
+    }
+
+    func handleSignOut(provider: UsageProvider) {
+        UsageService.signOut(provider: provider)
+        switch provider {
+        case .claude:
+            claudeUsage = nil
+            claudeError = nil
+            claudeServiceError = nil
+        case .codex:
+            codexUsage = nil
+            codexError = nil
+            codexServiceError = nil
+        }
         refresh()
     }
 
-    func startInAppOAuthLogin() {
-        let session = UsageService.createOAuthAuthorizationSession()
-        oauthAuthorizationSession = session
+    func startInAppOAuthLogin(provider: UsageProvider) {
+        let session = UsageService.createOAuthAuthorizationSession(provider: provider)
+        oauthSession = session
+        loginProvider = provider
         oauthAuthorizationURL = session.authorizationURL
         isShowingOAuthLogin = true
-        error = nil
+        setError(nil, for: provider)
     }
 
     func cancelInAppOAuthLogin() {
         isShowingOAuthLogin = false
         oauthAuthorizationURL = nil
-        oauthAuthorizationSession = nil
+        oauthSession = nil
+        loginProvider = nil
         isCompletingOAuthLogin = false
     }
 
     func completeInAppOAuthLogin(code: String, returnedState: String?) {
-        guard let session = oauthAuthorizationSession else {
-            error = "OAuth session expired. Please try signing in again."
+        guard let session = oauthSession else {
             return
         }
+        let provider = session.provider
 
-        if let returnedState,
-           !returnedState.isEmpty,
-           returnedState != session.state {
-            error = "OAuth state mismatch. Please try signing in again."
+        if let returnedState, !returnedState.isEmpty, returnedState != session.state {
+            setError("OAuth state mismatch. Please try signing in again.", for: provider)
             cancelInAppOAuthLogin()
             return
         }
 
         isCompletingOAuthLogin = true
-        error = nil
+        setError(nil, for: provider)
 
         Task {
             do {
                 try await UsageService.completeOAuthAuthorization(
+                    provider: provider,
                     code: code,
                     state: session.state,
                     codeVerifier: session.codeVerifier
                 )
-                self.lastServiceError = nil
+                self.setServiceError(nil, for: provider)
                 self.cancelInAppOAuthLogin()
                 self.refresh()
             } catch {
-                self.lastServiceError = error as? UsageServiceError
-                self.error = error.localizedDescription
+                self.setServiceError(error as? UsageServiceError, for: provider)
+                self.setError(error.localizedDescription, for: provider)
                 self.cancelInAppOAuthLogin()
             }
         }
     }
 
     func handleInAppOAuthFailure(_ message: String) {
-        error = message
+        if let provider = loginProvider {
+            setError(message, for: provider)
+        }
         cancelInAppOAuthLogin()
+    }
+
+    private func setError(_ message: String?, for provider: UsageProvider) {
+        switch provider {
+        case .claude: claudeError = message
+        case .codex: codexError = message
+        }
+    }
+
+    private func setServiceError(_ error: UsageServiceError?, for provider: UsageProvider) {
+        switch provider {
+        case .claude: claudeServiceError = error
+        case .codex: codexServiceError = error
+        }
     }
 
     private func scheduleResetRefresh() {
         resetTimer?.invalidate()
         resetTimer = nil
 
-        guard let usage else { return }
-
         let now = Date()
-        let resetDates = [usage.fiveHour.resetDate, usage.sevenDay.resetDate].compactMap { $0 }
-        guard let earliest = resetDates.filter({ $0 > now }).min() else { return }
+        let resetDates = [claudeUsage, codexUsage]
+            .compactMap { $0 }
+            .flatMap { [$0.fiveHour.resetDate, $0.sevenDay.resetDate] }
+            .compactMap { $0 }
+            .filter { $0 > now }
+
+        guard let earliest = resetDates.min() else { return }
 
         let delay = earliest.timeIntervalSince(now) + 2
         resetTimer = Timer.scheduledTimer(

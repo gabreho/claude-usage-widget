@@ -13,12 +13,10 @@ struct UsagePopoverView: View {
             } else {
                 UsageDashboardView(
                     style: .popover,
-                    usage: viewModel.usage,
-                    errorMessage: viewModel.error,
+                    title: "Usage",
+                    sections: viewModel.sections,
                     isLoading: viewModel.isLoading,
-                    shouldOfferInAppLogin: viewModel.shouldOfferInAppLogin,
                     lastUpdated: viewModel.lastUpdated,
-                    onLogin: { viewModel.startInAppOAuthLogin() },
                     headerAccessory: {
                         Button(action: {
                             openSettings()
@@ -31,7 +29,7 @@ struct UsagePopoverView: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .buttonStyle(.borderless)
-                        .disabled(viewModel.isLoading || viewModel.isCompletingOAuthLogin)
+                        .disabled(viewModel.isLoading || viewModel.isCompletingClaudeLogin || viewModel.isCompletingCodexLogin)
                     },
                     footerAccessory: {
                         Button("Quit") {
@@ -48,6 +46,22 @@ struct UsagePopoverView: View {
         .onChange(of: viewModel.isShowingCodeEntry) { _, showing in
             if !showing { codeInput = "" }
         }
+        .sheet(isPresented: $viewModel.isShowingCodexWebLogin) {
+            if let authorizationURL = viewModel.codexAuthorizationURL {
+                OAuthLoginView(
+                    provider: .codex,
+                    authorizationURL: authorizationURL,
+                    isCompletingLogin: viewModel.isCompletingCodexLogin,
+                    onCancel: { viewModel.cancelCodexLogin() },
+                    onCodeReceived: { code, state in
+                        viewModel.completeCodexLogin(code: code, returnedState: state)
+                    },
+                    onFailure: { message in
+                        viewModel.handleCodexLoginFailure(message)
+                    }
+                )
+            }
+        }
     }
 
     private var inlineCodeEntryForm: some View {
@@ -59,7 +73,7 @@ struct UsagePopoverView: View {
                 .foregroundStyle(.secondary)
             TextField("Paste authentication code", text: $codeInput)
                 .textFieldStyle(.roundedBorder)
-            if viewModel.isCompletingOAuthLogin {
+            if viewModel.isCompletingClaudeLogin {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
                     Text("Signing in…").foregroundStyle(.secondary)
@@ -67,7 +81,7 @@ struct UsagePopoverView: View {
             }
             HStack {
                 Button("Cancel") {
-                    viewModel.cancelInAppOAuthLogin()
+                    viewModel.cancelClaudeLogin()
                 }
                 .buttonStyle(.borderless)
                 Spacer()
@@ -75,7 +89,7 @@ struct UsagePopoverView: View {
                     viewModel.submitOAuthCode(codeInput.trimmingCharacters(in: .whitespacesAndNewlines))
                 }
                 .disabled(codeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                          || viewModel.isCompletingOAuthLogin)
+                          || viewModel.isCompletingClaudeLogin)
             }
         }
     }

@@ -3,9 +3,8 @@ import SwiftUI
 
 struct PreferencesView: View {
     var menuBarShowsBoth: Binding<Bool>?
-    var onSignOut: (() -> Void)?
+    var onSignOut: ((UsageProvider) -> Void)?
     @Environment(\.dismiss) private var dismiss
-    @State private var isAuthenticated = UsageService.isAuthenticated
 
     var body: some View {
 #if os(macOS)
@@ -35,20 +34,26 @@ struct PreferencesView: View {
 #endif
     }
 
+    private var authenticatedProviders: [UsageProvider] {
+        UsageProvider.allCases.filter { UsageService.isAuthenticated(provider: $0) }
+    }
+
     @ViewBuilder
     private var content: some View {
         if let menuBarShowsBoth {
             Section("Menu Bar") {
-                Toggle("Show 5h and 7d in menu bar", isOn: menuBarShowsBoth)
+                Toggle("Show both providers in menu bar", isOn: menuBarShowsBoth)
             }
         }
 
-        if isAuthenticated {
-            Section("Account") {
-                Button("Sign Out", role: .destructive) {
-                    UsageService.signOut()
-                    dismiss()
-                    onSignOut?()
+        let providers = authenticatedProviders
+        if !providers.isEmpty {
+            Section("Accounts") {
+                ForEach(providers, id: \.self) { provider in
+                    Button("Sign Out of \(provider.displayName)", role: .destructive) {
+                        UsageService.signOut(provider: provider)
+                        onSignOut?(provider)
+                    }
                 }
             }
         }

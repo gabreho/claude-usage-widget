@@ -19,7 +19,7 @@ struct ClaudeUsageApp: App {
         Settings {
             PreferencesView(
                 menuBarShowsBoth: menuBarShowsBothBinding,
-                onSignOut: { viewModel.handleSignOut() }
+                onSignOut: { provider in viewModel.signOut(provider: provider) }
             )
         }
     }

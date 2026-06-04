@@ -7,18 +7,63 @@ public enum UsageDashboardStyle {
     case widgetMedium
 }
 
+/// One provider's slice of the dashboard: its usage (if loaded), error, and sign-in affordance.
+public struct ProviderUsageSection: Identifiable {
+    public let provider: UsageProvider
+    public let usage: UsageResponse?
+    public let errorMessage: String?
+    public let shouldOfferInAppLogin: Bool
+    public let onLogin: (() -> Void)?
+
+    public var id: String { provider.rawValue }
+
+    public init(
+        provider: UsageProvider,
+        usage: UsageResponse?,
+        errorMessage: String? = nil,
+        shouldOfferInAppLogin: Bool = false,
+        onLogin: (() -> Void)? = nil
+    ) {
+        self.provider = provider
+        self.usage = usage
+        self.errorMessage = errorMessage
+        self.shouldOfferInAppLogin = shouldOfferInAppLogin
+        self.onLogin = onLogin
+    }
+}
+
 public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: View {
     private let style: UsageDashboardStyle
-    private let usage: UsageResponse?
-    private let errorMessage: String?
+    private let title: String
+    private let sections: [ProviderUsageSection]
     private let isLoading: Bool
-    private let shouldOfferInAppLogin: Bool
     private let lastUpdated: Date?
     private let unavailableMessage: String?
-    private let onLogin: (() -> Void)?
     private let headerAccessory: () -> HeaderAccessory
     private let footerAccessory: () -> FooterAccessory
 
+    /// Multi-provider initializer: renders one labeled section per provider, stacked vertically.
+    public init(
+        style: UsageDashboardStyle,
+        title: String = "Usage",
+        sections: [ProviderUsageSection],
+        isLoading: Bool = false,
+        lastUpdated: Date? = nil,
+        unavailableMessage: String? = nil,
+        @ViewBuilder headerAccessory: @escaping () -> HeaderAccessory,
+        @ViewBuilder footerAccessory: @escaping () -> FooterAccessory
+    ) {
+        self.style = style
+        self.title = title
+        self.sections = sections
+        self.isLoading = isLoading
+        self.lastUpdated = lastUpdated
+        self.unavailableMessage = unavailableMessage
+        self.headerAccessory = headerAccessory
+        self.footerAccessory = footerAccessory
+    }
+
+    /// Backward-compatible single-provider (Claude) initializer.
     public init(
         style: UsageDashboardStyle,
         usage: UsageResponse?,
@@ -31,16 +76,34 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
         @ViewBuilder headerAccessory: @escaping () -> HeaderAccessory,
         @ViewBuilder footerAccessory: @escaping () -> FooterAccessory
     ) {
-        self.style = style
-        self.usage = usage
-        self.errorMessage = errorMessage
-        self.isLoading = isLoading
-        self.shouldOfferInAppLogin = shouldOfferInAppLogin
-        self.lastUpdated = lastUpdated
-        self.unavailableMessage = unavailableMessage
-        self.onLogin = onLogin
-        self.headerAccessory = headerAccessory
-        self.footerAccessory = footerAccessory
+        self.init(
+            style: style,
+            title: "Claude Usage",
+            sections: [
+                ProviderUsageSection(
+                    provider: .claude,
+                    usage: usage,
+                    errorMessage: errorMessage,
+                    shouldOfferInAppLogin: shouldOfferInAppLogin,
+                    onLogin: onLogin
+                )
+            ],
+            isLoading: isLoading,
+            lastUpdated: lastUpdated,
+            unavailableMessage: unavailableMessage,
+            headerAccessory: headerAccessory,
+            footerAccessory: footerAccessory
+        )
+    }
+
+    /// True when at least one section has loaded usage data.
+    private var hasAnyUsage: Bool {
+        sections.contains { $0.usage != nil }
+    }
+
+    /// Show per-provider titles only when more than one provider is on screen.
+    private var showSectionTitles: Bool {
+        sections.count > 1
     }
 
     public var body: some View {
@@ -51,10 +114,6 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
 
             if layout.showHeaderDivider {
                 Divider()
-            }
-
-            if let errorMessage {
-                errorSection(errorMessage, layout: layout)
             }
 
             contentSection(layout: layout)
@@ -82,13 +141,13 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
     private func headerSection(layout: DashboardLayout) -> some View {
         VStack(alignment: .leading, spacing: layout.headerSupplementarySpacing) {
             HStack {
-                Text("Claude Usage")
+                Text(title)
                     .font(layout.titleFont)
                 Spacer()
                 headerAccessory()
             }
 
-            if usage == nil {
+            if !hasAnyUsage {
                 if layout.showLoadingInHeader && isLoading {
                     if let loadingLabel = layout.headerLoadingLabel {
                         ProgressView(loadingLabel)
@@ -97,7 +156,7 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
                         ProgressView()
                     }
                 } else if layout.showUnavailableInHeader,
-                          !shouldOfferInAppLogin,
+                          !sections.contains(where: { $0.shouldOfferInAppLogin }),
                           let message = unavailableMessage ?? layout.defaultUnavailableMessage {
                     Text(message)
                         .font(layout.headerSupplementaryFont)
@@ -108,39 +167,53 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
     }
 
     @ViewBuilder
-    private func errorSection(_ message: String, layout: DashboardLayout) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(message, systemImage: layout.errorIcon)
-                .font(layout.errorFont)
-                .foregroundStyle(.red)
-
-            loginButton(style: layout.errorLoginButtonStyle)
-        }
-    }
-
-    @ViewBuilder
     private func contentSection(layout: DashboardLayout) -> some View {
-        if let usage {
+        if hasAnyUsage || sections.contains(where: { $0.shouldOfferInAppLogin || $0.errorMessage != nil }) {
             VStack(alignment: .leading, spacing: layout.stackSpacing) {
-                UsageMetricsView(usage: usage, style: layout.metricsStyle)
-                if layout.showExtraUsage, let extra = usage.extraUsage, extra.hasData {
-                    Divider()
-                    ExtraUsageSectionView(extra: extra, wrapInCard: layout.extraWrapInCard)
+                ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                    if index > 0 {
+                        Divider()
+                    }
+                    providerSection(section, layout: layout)
                 }
             }
         } else if layout.showLoadingInContent && isLoading {
             ProgressView()
                 .frame(maxWidth: .infinity)
-        } else if shouldOfferInAppLogin,
-                  layout.emptyLoginButtonStyle != .hidden,
-                  onLogin != nil {
-            loginButton(style: layout.emptyLoginButtonStyle)
         } else if !layout.showUnavailableInHeader,
                   let message = unavailableMessage ?? layout.defaultUnavailableMessage {
             Text(message)
                 .font(layout.unavailableFont)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.leading)
+        }
+    }
+
+    @ViewBuilder
+    private func providerSection(_ section: ProviderUsageSection, layout: DashboardLayout) -> some View {
+        VStack(alignment: .leading, spacing: layout.headerSupplementarySpacing) {
+            if showSectionTitles {
+                Text(section.provider.displayName)
+                    .font(layout.sectionTitleFont)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let message = section.errorMessage {
+                Label(message, systemImage: layout.errorIcon)
+                    .font(layout.errorFont)
+                    .foregroundStyle(.red)
+            }
+
+            if let usage = section.usage {
+                UsageMetricsView(usage: usage, style: layout.metricsStyle)
+                if layout.showExtraUsage, let extra = usage.extraUsage, extra.hasData {
+                    Divider()
+                    ExtraUsageSectionView(extra: extra, wrapInCard: layout.extraWrapInCard)
+                }
+            } else if section.shouldOfferInAppLogin, section.onLogin != nil {
+                let buttonStyle = section.errorMessage != nil ? layout.errorLoginButtonStyle : layout.emptyLoginButtonStyle
+                loginButton(for: section, style: buttonStyle)
+            }
         }
     }
 
@@ -157,28 +230,24 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
     }
 
     @ViewBuilder
-    private func loginButton(style: DashboardLoginButtonStyle) -> some View {
-        if shouldOfferInAppLogin,
-           let onLogin,
+    private func loginButton(for section: ProviderUsageSection, style: DashboardLoginButtonStyle) -> some View {
+        if section.shouldOfferInAppLogin,
+           let onLogin = section.onLogin,
            style != .hidden {
+            let label = Label(section.provider.signInLabel, systemImage: section.provider.signInIcon)
             switch style {
             case .hidden:
                 EmptyView()
             case .borderlessCaption:
-                Button(action: onLogin) {
-                    Label("Sign In with Claude", systemImage: "person.badge.key")
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
+                Button(action: onLogin) { label }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
             case .borderedProminent:
-                Button(action: onLogin) {
-                    Label("Sign In with Claude", systemImage: "person.badge.key")
-                }
-                .buttonStyle(.borderedProminent)
+                Button(action: onLogin) { label }
+                    .buttonStyle(.borderedProminent)
             case .borderedProminentFullWidth:
                 Button(action: onLogin) {
-                    Label("Sign In with Claude", systemImage: "person.badge.key")
-                        .frame(maxWidth: .infinity)
+                    label.frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -187,6 +256,26 @@ public struct UsageDashboardView<HeaderAccessory: View, FooterAccessory: View>: 
 }
 
 public extension UsageDashboardView where HeaderAccessory == EmptyView, FooterAccessory == EmptyView {
+    init(
+        style: UsageDashboardStyle,
+        title: String = "Usage",
+        sections: [ProviderUsageSection],
+        isLoading: Bool = false,
+        lastUpdated: Date? = nil,
+        unavailableMessage: String? = nil
+    ) {
+        self.init(
+            style: style,
+            title: title,
+            sections: sections,
+            isLoading: isLoading,
+            lastUpdated: lastUpdated,
+            unavailableMessage: unavailableMessage,
+            headerAccessory: { EmptyView() },
+            footerAccessory: { EmptyView() }
+        )
+    }
+
     init(
         style: UsageDashboardStyle,
         usage: UsageResponse?,
@@ -227,6 +316,7 @@ private struct DashboardLayout {
     let addBottomSpacer: Bool
 
     let titleFont: Font
+    let sectionTitleFont: Font
     let headerSupplementaryFont: Font
     let errorIcon: String
     let errorFont: Font
@@ -261,6 +351,7 @@ private struct DashboardLayout {
             addBottomSpacer = false
 
             titleFont = .headline
+            sectionTitleFont = .caption.weight(.semibold)
             headerSupplementaryFont = .subheadline
             errorIcon = "exclamationmark.triangle"
             errorFont = .caption
@@ -292,6 +383,7 @@ private struct DashboardLayout {
             addBottomSpacer = false
 
             titleFont = .title2.weight(.semibold)
+            sectionTitleFont = .headline
             headerSupplementaryFont = .subheadline
             errorIcon = "exclamationmark.triangle.fill"
             errorFont = .footnote
@@ -323,6 +415,7 @@ private struct DashboardLayout {
             addBottomSpacer = true
 
             titleFont = .headline
+            sectionTitleFont = .caption2.weight(.semibold)
             headerSupplementaryFont = .caption
             errorIcon = "exclamationmark.triangle.fill"
             errorFont = .caption
@@ -354,6 +447,7 @@ private struct DashboardLayout {
             addBottomSpacer = true
 
             titleFont = .headline
+            sectionTitleFont = .caption2.weight(.semibold)
             headerSupplementaryFont = .caption
             errorIcon = "exclamationmark.triangle.fill"
             errorFont = .caption

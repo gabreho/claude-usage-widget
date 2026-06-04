@@ -1,14 +1,6 @@
 import Foundation
 
 struct OAuthTokenClient {
-    private static let oauthTokenURL = URL(string: "https://platform.claude.com/v1/oauth/token")!
-
-    // Claude Code's public OAuth client ID (PKCE, no secret). Third-party tools reuse this
-    // since Anthropic doesn't offer a client registration mechanism.
-    private static let oauthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
-    // The usage endpoint (/api/oauth/usage) only requires user:profile.
-    private static let oauthRefreshScopes = ["user:profile"]
-
     struct RefreshedTokens {
         let accessToken: String
         let refreshToken: String
@@ -17,6 +9,7 @@ struct OAuthTokenClient {
     }
 
     static func exchangeAuthorizationCode(
+        config: ProviderConfig,
         code: String,
         state: String,
         codeVerifier: String
@@ -24,27 +17,28 @@ struct OAuthTokenClient {
         let requestBody: [String: Any] = [
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": UsageService.oauthRedirectURI,
-            "client_id": oauthClientID,
+            "redirect_uri": config.redirectURI,
+            "client_id": config.clientID,
             "code_verifier": codeVerifier,
             "state": state
         ]
 
-        return try await performTokenRequest(body: requestBody, timeout: 20)
+        return try await performTokenRequest(url: config.tokenURL, body: requestBody, timeout: 20)
     }
 
-    static func refreshTokens(using refreshToken: String) async throws -> RefreshedTokens {
+    static func refreshTokens(config: ProviderConfig, using refreshToken: String) async throws -> RefreshedTokens {
         let requestBody: [String: Any] = [
             "grant_type": "refresh_token",
             "refresh_token": refreshToken,
-            "client_id": oauthClientID,
-            "scope": oauthRefreshScopes.joined(separator: " ")
+            "client_id": config.clientID,
+            "scope": config.scopes.joined(separator: " ")
         ]
 
-        return try await performTokenRequest(body: requestBody, timeout: 15)
+        return try await performTokenRequest(url: config.tokenURL, body: requestBody, timeout: 15)
     }
 
     private static func performTokenRequest(
+        url oauthTokenURL: URL,
         body: [String: Any],
         timeout: TimeInterval
     ) async throws -> RefreshedTokens {
