@@ -16,6 +16,10 @@ let package = Package(
     targets: [
         .target(
             name: "ClaudeUsageKit"
+        ),
+        .testTarget(
+            name: "ClaudeUsageKitTests",
+            dependencies: ["ClaudeUsageKit"]
         )
     ]
 )

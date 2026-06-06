@@ -9,11 +9,11 @@ struct KeychainService {
     // Items are scoped to the app's implicit access group (TeamID.BundleID) with no user dialogs.
     private static let dataProtectionKeychain: Bool = true
 
-    static func readInAppCredentials() -> Data? {
+    static func readInAppCredentials(account: String = inAppOAuthAccount) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: inAppOAuthAccount,
+            kSecAttrAccount as String: account,
             kSecUseDataProtectionKeychain as String: dataProtectionKeychain,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
@@ -70,18 +70,18 @@ struct KeychainService {
         try writeCredentialsData(data, account: account)
     }
 
-    static func deleteInAppCredentials() {
+    static func deleteInAppCredentials(account: String = inAppOAuthAccount) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: inAppOAuthAccount,
+            kSecAttrAccount as String: account,
             kSecUseDataProtectionKeychain as String: dataProtectionKeychain
         ]
         SecItemDelete(query as CFDictionary)
     }
 
-    static func currentCredentialsRootJSONForWrite() -> [String: Any] {
-        guard let data = readInAppCredentials() else {
+    static func currentCredentialsRootJSONForWrite(account: String = inAppOAuthAccount) -> [String: Any] {
+        guard let data = readInAppCredentials(account: account) else {
             return [:]
         }
         return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]

@@ -12,12 +12,22 @@ final class UsageViewModel: ObservableObject {
 
     private static let menuBarLabelModeDefaultsKey = "menuBarLabelMode"
 
-    @Published var usage: UsageResponse?
-    @Published var error: String?
+    // Per-provider usage + error state.
+    @Published var claudeUsage: UsageResponse?
+    @Published var codexUsage: UsageResponse?
+    @Published var claudeError: String?
+    @Published var codexError: String?
+
     @Published var isLoading = false
-    @Published var isCompletingOAuthLogin = false
     @Published var lastUpdated: Date?
+
+    // Claude sign-in (system browser + paste code).
     @Published var isShowingCodeEntry = false
+    @Published var isCompletingClaudeLogin = false
+
+    // Codex sign-in (embedded web view captures the loopback redirect).
+    @Published var isCompletingCodexLogin = false
+
     @Published var menuBarLabelMode: MenuBarLabelMode {
         didSet {
             UserDefaults.standard.set(
@@ -30,8 +40,12 @@ final class UsageViewModel: ObservableObject {
     private var refreshTimer: Timer?
     private var resetTimer: Timer?
     private let refreshInterval: TimeInterval = 300
-    private var lastServiceError: UsageServiceError?
-    private var oauthAuthorizationSession: UsageService.OAuthAuthorizationSession?
+
+    private var claudeServiceError: UsageServiceError?
+    private var codexServiceError: UsageServiceError?
+    private var claudeOAuthSession: UsageService.OAuthAuthorizationSession?
+    private var codexOAuthSession: UsageService.OAuthAuthorizationSession?
+    private var codexLoginWindowController: OAuthLoginWindowController?
 
     init() {
         let storedModeRawValue = UserDefaults.standard.string(
@@ -42,15 +56,44 @@ final class UsageViewModel: ObservableObject {
         startAutoRefresh()
     }
 
-    var primaryUtilization: Double {
-        guard let usage else { return 0 }
+    // MARK: - Dashboard sections
+
+    var sections: [ProviderUsageSection] {
+        [
+            ProviderUsageSection(
+                provider: .claude,
+                usage: claudeUsage,
+                errorMessage: claudeError,
+                shouldOfferInAppLogin: claudeServiceError?.supportsInAppLoginRecovery == true,
+                onLogin: { [weak self] in self?.startClaudeLogin() }
+            ),
+            ProviderUsageSection(
+                provider: .codex,
+                usage: codexUsage,
+                errorMessage: codexError,
+                shouldOfferInAppLogin: codexServiceError?.supportsInAppLoginRecovery == true,
+                onLogin: { [weak self] in self?.startCodexLogin() }
+            )
+        ]
+    }
+
+    // MARK: - Menu bar
+
+    /// Highest "live" utilization across every signed-in provider, used for the gauge tint.
+    private var primaryUtilization: Double {
+        [claudeUsage, codexUsage]
+            .compactMap { $0.map(highlightUtilization) }
+            .max() ?? 0
+    }
+
+    private func highlightUtilization(_ usage: UsageResponse) -> Double {
         guard hasFutureResetDate(for: usage.fiveHour) else {
             return usage.sevenDay.utilization
         }
         return max(usage.fiveHour.utilization, usage.sevenDay.utilization)
     }
 
-    var primaryTier: UsageTier {
+    private var primaryTier: UsageTier {
         switch primaryUtilization {
         case ..<50: return .green
         case ..<80: return .yellow
@@ -59,18 +102,18 @@ final class UsageViewModel: ObservableObject {
     }
 
     var menuBarLabel: String {
-        guard let usage else { return "—" }
+        let entries: [(UsageProvider, UsageResponse)] = [
+            (.claude, claudeUsage),
+            (.codex, codexUsage)
+        ].compactMap { provider, usage in usage.map { (provider, $0) } }
+
+        guard !entries.isEmpty else { return "—" }
 
         switch menuBarLabelMode {
         case .both:
-            let fiveHourLabelValue: String
-            if hasFutureResetDate(for: usage.fiveHour) {
-                fiveHourLabelValue = "\(Int(usage.fiveHour.utilization))%"
-            } else {
-                fiveHourLabelValue = "--"
-            }
-            let sevenDayPercent = Int(usage.sevenDay.utilization)
-            return "5h:\(fiveHourLabelValue) 7d:\(sevenDayPercent)%"
+            return entries
+                .map { "\($0.0.menuBarPrefix):\(Int(highlightUtilization($0.1)))%" }
+                .joined(separator: " ")
         case .highest:
             return "\(Int(primaryUtilization))%"
         }
@@ -84,9 +127,7 @@ final class UsageViewModel: ObservableObject {
         }
     }
 
-    var shouldOfferInAppLogin: Bool {
-        lastServiceError?.supportsInAppLoginRecovery == true
-    }
+    // MARK: - Refresh
 
     func startAutoRefresh() {
         refresh()
@@ -109,55 +150,97 @@ final class UsageViewModel: ObservableObject {
     }
 
     func refresh() {
-        guard !isLoading, !isCompletingOAuthLogin else { return }
+        guard !isLoading, !isCompletingClaudeLogin, !isCompletingCodexLogin else { return }
         isLoading = true
-        error = nil
 
         Task {
-            do {
-                let result = try await UsageService.fetchUsage()
-                self.usage = result
-                self.lastUpdated = Date()
-                UsageWidgetSharedStore.save(usage: result, fetchedAt: Date())
+            async let claude: Void = fetch(.claude)
+            async let codex: Void = fetch(.codex)
+            _ = await (claude, codex)
+
+            self.lastUpdated = Date()
+            if self.claudeUsage != nil || self.codexUsage != nil {
+                UsageWidgetSharedStore.save(
+                    usage: self.claudeUsage,
+                    codexUsage: self.codexUsage,
+                    fetchedAt: Date()
+                )
                 WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
-                self.error = nil
-                self.lastServiceError = nil
-                self.scheduleResetRefresh()
-            } catch {
-                self.lastServiceError = error as? UsageServiceError
-                self.error = error.localizedDescription
             }
+            self.scheduleResetRefresh()
             self.isLoading = false
         }
     }
 
-    func handleSignOut() {
-        usage = nil
-        lastUpdated = nil
-        error = nil
-        lastServiceError = nil
-        UsageWidgetSharedStore.clear()
-        WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
+    private func fetch(_ provider: UsageProvider) async {
+        do {
+            let result = try await UsageService.fetchUsage(provider: provider)
+            apply(usage: result, error: nil, serviceError: nil, for: provider)
+        } catch {
+            let serviceError = error as? UsageServiceError
+            apply(usage: usage(for: provider), error: error.localizedDescription, serviceError: serviceError, for: provider)
+        }
+    }
+
+    private func usage(for provider: UsageProvider) -> UsageResponse? {
+        provider == .claude ? claudeUsage : codexUsage
+    }
+
+    private func apply(usage: UsageResponse?, error: String?, serviceError: UsageServiceError?, for provider: UsageProvider) {
+        switch provider {
+        case .claude:
+            claudeUsage = error == nil ? usage : claudeUsage
+            claudeError = error
+            claudeServiceError = serviceError
+        case .codex:
+            codexUsage = error == nil ? usage : codexUsage
+            codexError = error
+            codexServiceError = serviceError
+        }
+    }
+
+    // MARK: - Sign out
+
+    func signOut(provider: UsageProvider) {
+        UsageService.signOut(provider: provider)
+        switch provider {
+        case .claude:
+            claudeUsage = nil
+            claudeError = nil
+            claudeServiceError = nil
+        case .codex:
+            codexUsage = nil
+            codexError = nil
+            codexServiceError = nil
+        }
+        persistSnapshot()
         refresh()
     }
 
-    func startInAppOAuthLogin() {
-        let session = UsageService.createOAuthAuthorizationSession()
-        oauthAuthorizationSession = session
-        NSWorkspace.shared.open(session.authorizationURL)
-        isShowingCodeEntry = true
-        error = nil
+    private func persistSnapshot() {
+        UsageWidgetSharedStore.save(usage: claudeUsage, codexUsage: codexUsage, fetchedAt: Date())
+        WidgetCenter.shared.reloadTimelines(ofKind: UsageWidgetSharedStore.widgetKind)
     }
 
-    func cancelInAppOAuthLogin() {
+    // MARK: - Claude sign-in (paste code)
+
+    func startClaudeLogin() {
+        let session = UsageService.createOAuthAuthorizationSession(provider: .claude)
+        claudeOAuthSession = session
+        NSWorkspace.shared.open(session.authorizationURL)
+        isShowingCodeEntry = true
+        claudeError = nil
+    }
+
+    func cancelClaudeLogin() {
         isShowingCodeEntry = false
-        oauthAuthorizationSession = nil
-        isCompletingOAuthLogin = false
+        claudeOAuthSession = nil
+        isCompletingClaudeLogin = false
     }
 
     func submitOAuthCode(_ raw: String) {
-        guard let session = oauthAuthorizationSession else {
-            error = "OAuth session expired. Please try signing in again."
+        guard let session = claudeOAuthSession else {
+            claudeError = "OAuth session expired. Please try signing in again."
             return
         }
 
@@ -167,48 +250,127 @@ final class UsageViewModel: ObservableObject {
         let returnedState = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines) : nil
 
         guard !code.isEmpty else {
-            error = "Please enter a valid authentication code."
+            claudeError = "Please enter a valid authentication code."
             return
         }
 
-        if let returnedState,
+        if let expectedState = session.state,
+           let returnedState,
            !returnedState.isEmpty,
-           returnedState != session.state {
-            error = "OAuth state mismatch. Please try signing in again."
-            cancelInAppOAuthLogin()
+           returnedState != expectedState {
+            claudeError = "OAuth state mismatch. Please try signing in again."
+            cancelClaudeLogin()
             return
         }
 
-        isCompletingOAuthLogin = true
-        error = nil
+        isCompletingClaudeLogin = true
+        claudeError = nil
 
         Task {
             do {
                 try await UsageService.completeOAuthAuthorization(
+                    provider: .claude,
                     code: code,
                     state: session.state,
                     codeVerifier: session.codeVerifier
                 )
-                self.lastServiceError = nil
-                self.cancelInAppOAuthLogin()
+                self.claudeServiceError = nil
+                self.cancelClaudeLogin()
                 self.refresh()
             } catch {
-                self.lastServiceError = error as? UsageServiceError
-                self.error = error.localizedDescription
-                self.cancelInAppOAuthLogin()
+                self.claudeServiceError = error as? UsageServiceError
+                self.claudeError = error.localizedDescription
+                self.cancelClaudeLogin()
             }
         }
     }
+
+    // MARK: - Codex sign-in (embedded web view, loopback redirect)
+
+    func startCodexLogin() {
+        let session = UsageService.createOAuthAuthorizationSession(provider: .codex)
+        codexOAuthSession = session
+        codexError = nil
+        showCodexLoginWindow(authorizationURL: session.authorizationURL)
+    }
+
+    func cancelCodexLogin() {
+        codexOAuthSession = nil
+        isCompletingCodexLogin = false
+        dismissCodexLoginWindow()
+    }
+
+    func completeCodexLogin(code: String, returnedState: String?) {
+        guard let session = codexOAuthSession else {
+            codexError = "OAuth session expired. Please try signing in again."
+            return
+        }
+
+        if let expectedState = session.state,
+           let returnedState,
+           !returnedState.isEmpty,
+           returnedState != expectedState {
+            codexError = "OAuth state mismatch. Please try signing in again."
+            cancelCodexLogin()
+            return
+        }
+
+        isCompletingCodexLogin = true
+        codexError = nil
+
+        Task {
+            do {
+                try await UsageService.completeOAuthAuthorization(
+                    provider: .codex,
+                    code: code,
+                    state: session.state,
+                    codeVerifier: session.codeVerifier
+                )
+                self.codexServiceError = nil
+                self.cancelCodexLogin()
+                self.refresh()
+            } catch {
+                self.codexServiceError = error as? UsageServiceError
+                self.codexError = error.localizedDescription
+                self.cancelCodexLogin()
+            }
+        }
+    }
+
+    func handleCodexLoginFailure(_ message: String) {
+        codexError = message
+        cancelCodexLogin()
+    }
+
+    private func showCodexLoginWindow(authorizationURL: URL) {
+        codexLoginWindowController?.close()
+        let controller = OAuthLoginWindowController(
+            viewModel: self,
+            authorizationURL: authorizationURL
+        )
+        codexLoginWindowController = controller
+        controller.show()
+    }
+
+    private func dismissCodexLoginWindow() {
+        codexLoginWindowController?.close()
+        codexLoginWindowController = nil
+    }
+
+    // MARK: - Reset-driven refresh
 
     private func scheduleResetRefresh() {
         resetTimer?.invalidate()
         resetTimer = nil
 
-        guard let usage else { return }
-
         let now = Date()
-        let resetDates = [usage.fiveHour.resetDate, usage.sevenDay.resetDate].compactMap { $0 }
-        guard let earliest = resetDates.filter({ $0 > now }).min() else { return }
+        let resetDates = [claudeUsage, codexUsage]
+            .compactMap { $0 }
+            .flatMap { [$0.fiveHour.resetDate, $0.sevenDay.resetDate] }
+            .compactMap { $0 }
+            .filter { $0 > now }
+
+        guard let earliest = resetDates.min() else { return }
 
         let delay = earliest.timeIntervalSince(now) + 2
         resetTimer = Timer.scheduledTimer(
@@ -226,5 +388,88 @@ final class UsageViewModel: ObservableObject {
             return false
         }
         return resetDate > Date()
+    }
+}
+
+@MainActor
+private final class OAuthLoginWindowController: NSObject, NSWindowDelegate {
+    private var window: NSWindow?
+    private var isClosingProgrammatically = false
+    private let onClose: () -> Void
+
+    init(viewModel: UsageViewModel, authorizationURL: URL) {
+        self.onClose = { [weak viewModel] in
+            viewModel?.cancelCodexLogin()
+        }
+
+        let content = CodexOAuthLoginWindowContent(
+            viewModel: viewModel,
+            authorizationURL: authorizationURL
+        )
+        let hostingController = NSHostingController(rootView: content)
+        let window = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = hostingController
+        window.title = "Sign in to Codex"
+        window.setContentSize(NSSize(width: 760, height: 560))
+        window.minSize = NSSize(width: 640, height: 480)
+        window.isReleasedWhenClosed = false
+        window.isFloatingPanel = true
+        window.hidesOnDeactivate = false
+        window.level = .floating
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        window.tabbingMode = .disallowed
+        window.center()
+
+        self.window = window
+        super.init()
+        window.delegate = self
+    }
+
+    func show() {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
+    }
+
+    func close() {
+        guard let window else {
+            return
+        }
+
+        isClosingProgrammatically = true
+        window.close()
+        isClosingProgrammatically = false
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        window = nil
+        if !isClosingProgrammatically {
+            onClose()
+        }
+    }
+}
+
+private struct CodexOAuthLoginWindowContent: View {
+    @ObservedObject var viewModel: UsageViewModel
+    let authorizationURL: URL
+
+    var body: some View {
+        OAuthLoginView(
+            provider: .codex,
+            authorizationURL: authorizationURL,
+            isCompletingLogin: viewModel.isCompletingCodexLogin,
+            onCancel: { viewModel.cancelCodexLogin() },
+            onCodeReceived: { code, state in
+                viewModel.completeCodexLogin(code: code, returnedState: state)
+            },
+            onFailure: { message in
+                viewModel.handleCodexLoginFailure(message)
+            }
+        )
     }
 }

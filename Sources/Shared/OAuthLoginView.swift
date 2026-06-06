@@ -3,17 +3,22 @@ import SwiftUI
 import WebKit
 
 struct OAuthLoginView: View {
+    let provider: UsageProvider
     let authorizationURL: URL
     let isCompletingLogin: Bool
     let onCancel: () -> Void
     let onCodeReceived: (_ code: String, _ state: String?) -> Void
     let onFailure: (_ message: String) -> Void
 
+    private var navigationTitle: String {
+        "Sign in to \(provider.displayName)"
+    }
+
     var body: some View {
 #if os(macOS)
         VStack(spacing: 0) {
             HStack {
-                Text("Sign in to Claude")
+                Text(navigationTitle)
                     .font(.headline)
                 Spacer()
                 if isCompletingLogin {
@@ -29,7 +34,7 @@ struct OAuthLoginView: View {
 
             OAuthWebView(
                 initialURL: authorizationURL,
-                callbackURL: UsageService.oauthRedirectURL,
+                callbackURL: UsageService.oauthRedirectURL(for: provider),
                 onCodeReceived: onCodeReceived,
                 onFailure: onFailure
             )
@@ -39,11 +44,11 @@ struct OAuthLoginView: View {
         NavigationStack {
             OAuthWebView(
                 initialURL: authorizationURL,
-                callbackURL: UsageService.oauthRedirectURL,
+                callbackURL: UsageService.oauthRedirectURL(for: provider),
                 onCodeReceived: onCodeReceived,
                 onFailure: onFailure
             )
-            .navigationTitle("Sign in to Claude")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
