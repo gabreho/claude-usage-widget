@@ -401,12 +401,22 @@ private final class OAuthLoginWindowController: NSObject, NSWindowDelegate {
             authorizationURL: authorizationURL
         )
         let hostingController = NSHostingController(rootView: content)
-        let window = NSWindow(contentViewController: hostingController)
+        let window = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = hostingController
         window.title = "Sign in to Codex"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 760, height: 560))
         window.minSize = NSSize(width: 640, height: 480)
         window.isReleasedWhenClosed = false
+        window.isFloatingPanel = true
+        window.hidesOnDeactivate = false
+        window.level = .floating
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        window.tabbingMode = .disallowed
         window.center()
 
         self.window = window
@@ -417,6 +427,7 @@ private final class OAuthLoginWindowController: NSObject, NSWindowDelegate {
     func show() {
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        window?.orderFrontRegardless()
     }
 
     func close() {
