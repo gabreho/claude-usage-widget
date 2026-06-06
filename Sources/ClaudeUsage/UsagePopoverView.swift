@@ -46,22 +46,6 @@ struct UsagePopoverView: View {
         .onChange(of: viewModel.isShowingCodeEntry) { _, showing in
             if !showing { codeInput = "" }
         }
-        .sheet(isPresented: $viewModel.isShowingCodexWebLogin) {
-            if let authorizationURL = viewModel.codexAuthorizationURL {
-                OAuthLoginView(
-                    provider: .codex,
-                    authorizationURL: authorizationURL,
-                    isCompletingLogin: viewModel.isCompletingCodexLogin,
-                    onCancel: { viewModel.cancelCodexLogin() },
-                    onCodeReceived: { code, state in
-                        viewModel.completeCodexLogin(code: code, returnedState: state)
-                    },
-                    onFailure: { message in
-                        viewModel.handleCodexLoginFailure(message)
-                    }
-                )
-            }
-        }
     }
 
     private var inlineCodeEntryForm: some View {

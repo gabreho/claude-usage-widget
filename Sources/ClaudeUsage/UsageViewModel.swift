@@ -26,8 +26,6 @@ final class UsageViewModel: ObservableObject {
     @Published var isCompletingClaudeLogin = false
 
     // Codex sign-in (embedded web view captures the loopback redirect).
-    @Published var isShowingCodexWebLogin = false
-    @Published var codexAuthorizationURL: URL?
     @Published var isCompletingCodexLogin = false
 
     @Published var menuBarLabelMode: MenuBarLabelMode {
@@ -47,6 +45,7 @@ final class UsageViewModel: ObservableObject {
     private var codexServiceError: UsageServiceError?
     private var claudeOAuthSession: UsageService.OAuthAuthorizationSession?
     private var codexOAuthSession: UsageService.OAuthAuthorizationSession?
+    private var codexLoginWindowController: OAuthLoginWindowController?
 
     init() {
         let storedModeRawValue = UserDefaults.standard.string(
@@ -288,16 +287,14 @@ final class UsageViewModel: ObservableObject {
     func startCodexLogin() {
         let session = UsageService.createOAuthAuthorizationSession(provider: .codex)
         codexOAuthSession = session
-        codexAuthorizationURL = session.authorizationURL
-        isShowingCodexWebLogin = true
         codexError = nil
+        showCodexLoginWindow(authorizationURL: session.authorizationURL)
     }
 
     func cancelCodexLogin() {
-        isShowingCodexWebLogin = false
-        codexAuthorizationURL = nil
         codexOAuthSession = nil
         isCompletingCodexLogin = false
+        dismissCodexLoginWindow()
     }
 
     func completeCodexLogin(code: String, returnedState: String?) {
@@ -339,6 +336,21 @@ final class UsageViewModel: ObservableObject {
         cancelCodexLogin()
     }
 
+    private func showCodexLoginWindow(authorizationURL: URL) {
+        codexLoginWindowController?.close()
+        let controller = OAuthLoginWindowController(
+            viewModel: self,
+            authorizationURL: authorizationURL
+        )
+        codexLoginWindowController = controller
+        controller.show()
+    }
+
+    private func dismissCodexLoginWindow() {
+        codexLoginWindowController?.close()
+        codexLoginWindowController = nil
+    }
+
     // MARK: - Reset-driven refresh
 
     private func scheduleResetRefresh() {
@@ -370,5 +382,77 @@ final class UsageViewModel: ObservableObject {
             return false
         }
         return resetDate > Date()
+    }
+}
+
+@MainActor
+private final class OAuthLoginWindowController: NSObject, NSWindowDelegate {
+    private var window: NSWindow?
+    private var isClosingProgrammatically = false
+    private let onClose: () -> Void
+
+    init(viewModel: UsageViewModel, authorizationURL: URL) {
+        self.onClose = { [weak viewModel] in
+            viewModel?.cancelCodexLogin()
+        }
+
+        let content = CodexOAuthLoginWindowContent(
+            viewModel: viewModel,
+            authorizationURL: authorizationURL
+        )
+        let hostingController = NSHostingController(rootView: content)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Sign in to Codex"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.setContentSize(NSSize(width: 760, height: 560))
+        window.minSize = NSSize(width: 640, height: 480)
+        window.isReleasedWhenClosed = false
+        window.center()
+
+        self.window = window
+        super.init()
+        window.delegate = self
+    }
+
+    func show() {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    func close() {
+        guard let window else {
+            return
+        }
+
+        isClosingProgrammatically = true
+        window.close()
+        isClosingProgrammatically = false
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        window = nil
+        if !isClosingProgrammatically {
+            onClose()
+        }
+    }
+}
+
+private struct CodexOAuthLoginWindowContent: View {
+    @ObservedObject var viewModel: UsageViewModel
+    let authorizationURL: URL
+
+    var body: some View {
+        OAuthLoginView(
+            provider: .codex,
+            authorizationURL: authorizationURL,
+            isCompletingLogin: viewModel.isCompletingCodexLogin,
+            onCancel: { viewModel.cancelCodexLogin() },
+            onCodeReceived: { code, state in
+                viewModel.completeCodexLogin(code: code, returnedState: state)
+            },
+            onFailure: { message in
+                viewModel.handleCodexLoginFailure(message)
+            }
+        )
     }
 }
