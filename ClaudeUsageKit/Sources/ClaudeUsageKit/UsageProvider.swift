@@ -68,6 +68,8 @@ struct ProviderConfig {
     let clientID: String
     let scopes: [String]
     let redirectURI: String
+    /// Whether this provider accepts the standard OAuth `state` parameter on authorize/token calls.
+    let usesStateParameter: Bool
     /// Extra query items appended to the authorize request (provider-specific flags). Both providers
     /// use the standard `response_type=code` PKCE flow; only these extras differ.
     let extraAuthorizeQueryItems: [URLQueryItem]
@@ -94,6 +96,7 @@ struct ProviderConfig {
         // The usage endpoint (/api/oauth/usage) only requires user:profile.
         scopes: ["user:profile"],
         redirectURI: "https://platform.claude.com/oauth/code/callback",
+        usesStateParameter: true,
         extraAuthorizeQueryItems: [URLQueryItem(name: "code", value: "true")],
         keychainAccount: "claude-usage-in-app-oauth",
         credentialsRootKey: "claudeAiOauth"
@@ -109,9 +112,10 @@ struct ProviderConfig {
         clientID: "app_EMoamEEZ73f0CkXaXp7hrann",
         scopes: ["openid", "profile", "email", "offline_access"],
         // Loopback redirect. The app never binds a localhost server: the embedded web view
-        // intercepts the redirect navigation and reads the `code`/`state` from the query string,
-        // exactly like the Claude hosted-callback interception. This is why it also works on iOS.
+        // intercepts the redirect navigation and reads the `code` from the query string.
+        // OpenAI's Codex simplified flow rejects the standard OAuth `state` parameter.
         redirectURI: "http://localhost:1455/auth/callback",
+        usesStateParameter: false,
         extraAuthorizeQueryItems: [
             URLQueryItem(name: "id_token_add_organizations", value: "true"),
             URLQueryItem(name: "codex_cli_simplified_flow", value: "true"),

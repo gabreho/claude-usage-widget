@@ -11,17 +11,19 @@ struct OAuthTokenClient {
     static func exchangeAuthorizationCode(
         config: ProviderConfig,
         code: String,
-        state: String,
+        state: String?,
         codeVerifier: String
     ) async throws -> RefreshedTokens {
-        let requestBody: [String: Any] = [
+        var requestBody: [String: Any] = [
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": config.redirectURI,
             "client_id": config.clientID,
-            "code_verifier": codeVerifier,
-            "state": state
+            "code_verifier": codeVerifier
         ]
+        if let state {
+            requestBody["state"] = state
+        }
 
         return try await performTokenRequest(url: config.tokenURL, body: requestBody, timeout: 20)
     }

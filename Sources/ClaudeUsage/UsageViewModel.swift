@@ -254,7 +254,10 @@ final class UsageViewModel: ObservableObject {
             return
         }
 
-        if let returnedState, !returnedState.isEmpty, returnedState != session.state {
+        if let expectedState = session.state,
+           let returnedState,
+           !returnedState.isEmpty,
+           returnedState != expectedState {
             claudeError = "OAuth state mismatch. Please try signing in again."
             cancelClaudeLogin()
             return
@@ -303,7 +306,10 @@ final class UsageViewModel: ObservableObject {
             return
         }
 
-        if let returnedState, !returnedState.isEmpty, returnedState != session.state {
+        if let expectedState = session.state,
+           let returnedState,
+           !returnedState.isEmpty,
+           returnedState != expectedState {
             codexError = "OAuth state mismatch. Please try signing in again."
             cancelCodexLogin()
             return

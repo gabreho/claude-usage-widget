@@ -189,7 +189,10 @@ private final class ClaudeUsageiOSViewModel: ObservableObject {
         }
         let provider = session.provider
 
-        if let returnedState, !returnedState.isEmpty, returnedState != session.state {
+        if let expectedState = session.state,
+           let returnedState,
+           !returnedState.isEmpty,
+           returnedState != expectedState {
             setError("OAuth state mismatch. Please try signing in again.", for: provider)
             cancelInAppOAuthLogin()
             return

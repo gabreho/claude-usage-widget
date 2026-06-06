@@ -73,10 +73,10 @@ public struct UsageService {
     public struct OAuthAuthorizationSession {
         public let provider: UsageProvider
         public let authorizationURL: URL
-        public let state: String
+        public let state: String?
         public let codeVerifier: String
 
-        public init(provider: UsageProvider, authorizationURL: URL, state: String, codeVerifier: String) {
+        public init(provider: UsageProvider, authorizationURL: URL, state: String?, codeVerifier: String) {
             self.provider = provider
             self.authorizationURL = authorizationURL
             self.state = state
@@ -105,7 +105,7 @@ public struct UsageService {
         let config = provider.config
         let codeVerifier = PKCEUtility.randomURLSafeString(byteCount: 32)
         let codeChallenge = PKCEUtility.codeChallenge(for: codeVerifier)
-        let state = PKCEUtility.randomURLSafeString(byteCount: 24)
+        let state = config.usesStateParameter ? PKCEUtility.randomURLSafeString(byteCount: 24) : nil
 
         var components = URLComponents(url: config.authorizeURL, resolvingAgainstBaseURL: false)!
         var queryItems = [
@@ -114,9 +114,11 @@ public struct UsageService {
             URLQueryItem(name: "redirect_uri", value: config.redirectURI),
             URLQueryItem(name: "scope", value: config.scopes.joined(separator: " ")),
             URLQueryItem(name: "code_challenge", value: codeChallenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256"),
-            URLQueryItem(name: "state", value: state)
+            URLQueryItem(name: "code_challenge_method", value: "S256")
         ]
+        if let state {
+            queryItems.append(URLQueryItem(name: "state", value: state))
+        }
         queryItems.append(contentsOf: config.extraAuthorizeQueryItems)
         components.queryItems = queryItems
 
@@ -131,7 +133,7 @@ public struct UsageService {
     public static func completeOAuthAuthorization(
         provider: UsageProvider = .claude,
         code: String,
-        state: String,
+        state: String?,
         codeVerifier: String
     ) async throws {
         let config = provider.config
